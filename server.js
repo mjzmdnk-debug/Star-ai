@@ -353,7 +353,9 @@ app.get('/api/admin/overview', auth, adminOnly, async(req,res)=>{
   }catch(e){res.status(500).json({error:'خطأ في جلب الإحصائيات'});}
 });
 
-app.get('/{*splat}',(req,res)=>res.sendFile(process.cwd()+'/public/index.html'));
+app.get('/{*splat}', (req, res) => {
+  res.sendFile(process.cwd() + '/index.html');
+});
 
 // بدء التطبيق
 async function start(){
