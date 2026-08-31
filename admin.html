@@ -1,0 +1,30 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STAR AI — Admin</title><link rel="stylesheet" href="/styles.css"></head>
+<body><header><a class="brand" href="/">✦ STAR AI <small style="color:#9a6cff">ADMIN</small></a><div><a class="btn" href="/dashboard.html">Panele Dön</a> <button class="btn" id="logout">Çıkış</button></div></header>
+<main class="dashboard admin"><div class="dash-head"><div><span class="eyebrow">YÖNETİM MERKEZİ</span><h1>STAR AI Yönetim Paneli</h1><p>Üyeler, Credits, planlar ve gelir görünümü.</p></div></div>
+<div id="cards" class="admin-cards"></div>
+<section class="admin-panel"><div class="admin-toolbar"><h2>Kullanıcılar</h2><input id="search" placeholder="Ad veya e-posta ara…"></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kullanıcı</th><th>Plan</th><th>Credits</th><th>Rol</th><th>İşlem</th></tr></thead><tbody id="users"></tbody></table></div></section>
+<section class="admin-panel"><h2>Plan Dağılımı</h2><div id="plans" class="plan-bars"></div></section></main>
+<script>
+const fmt=n=>new Intl.NumberFormat('tr-TR').format(n);
+async function api(url,opt){const r=await fetch(url,opt);const d=await r.json();if(!r.ok)throw new Error(d.error||'Hata');return d}
+async function load(){
+ try{const me=await api('/api/me');if(me.user.role!=='admin')location.href='/dashboard.html';
+ const d=await api('/api/admin/overview');
+ cards.innerHTML=`
+ <div><small>Toplam Kullanıcı</small><b>${fmt(d.stats.users)}</b></div>
+ <div><small>Ücretli Kullanıcı</small><b>${fmt(d.stats.paid)}</b></div>
+ <div><small>Dolaşımdaki Credits</small><b>${fmt(d.stats.credits)}</b></div>
+ <div><small>AI Kullanım Credits</small><b>${fmt(d.stats.usage)}</b></div>
+ <div><small>Aylık Plan Değeri*</small><b>₺${fmt(d.stats.revenue)}</b></div>`;
+ plans.innerHTML=d.byPlan.map(x=>`<div><span>${x.plan}</span><b>${x.count}</b></div>`).join('');
+ await loadUsers();
+ }catch(e){alert(e.message);location.href='/';}
+}
+async function loadUsers(){const q=encodeURIComponent(search.value||'');const d=await api('/api/admin/users?q='+q);users.innerHTML=d.rows.map(u=>`<tr>
+<td>${u.id}</td><td><b>${u.name}</b><small>${u.email}</small></td><td><select onchange="setPlan(${u.id},this.value)">${['free','basic','pro','business'].map(p=>`<option ${p===u.plan?'selected':''}>${p}</option>`).join('')}</select></td>
+<td>${fmt(u.credits)}</td><td>${u.role}</td><td><button onclick="add(${u.id})">+ Credits</button></td></tr>`).join('')}
+async function add(id){const n=prompt('Eklenecek (+) veya düşülecek (-) Credits miktarı:');if(n===null)return;try{await api('/api/admin/users/'+id+'/credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:Number(n)})});loadUsers()}catch(e){alert(e.message)}}
+async function setPlan(id,plan){try{await api('/api/admin/users/'+id+'/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})})}catch(e){alert(e.message)}}
+search.oninput=()=>loadUsers();logout.onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.href='/'};
+load();
+</script></body></html>
