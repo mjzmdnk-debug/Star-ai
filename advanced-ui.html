@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STAR AI — واجهة متقدمة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            color: #e8ecf1;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 280px;
+            background: rgba(13, 16, 23, 0.95);
+            border-right: 1px solid #2d3748;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(79, 172, 254, 0.1);
+        }
+
+        .sidebar-header span {
+            font-size: 24px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-item:hover {
+            background: rgba(79, 172, 254, 0.2);
+        }
+
+        .chat-item.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #000;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid #2d3748;
+            padding-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-info {
+            background: rgba(79, 172, 254, 0.1);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .user-info strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 59, 48, 0.2);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+        }
+
+        /* ===== HEADER ===== */
+        .top-bar {
+            height: 60px;
+            border-bottom: 1px solid #2d3748;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            background: rgba(13, 16, 23, 0.95);
+        }
+
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .model-selector select {
+            background: rgba(79, 172, 254, 0.1);
+            color: #4facfe;
+            border: 1px solid #4facfe;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .settings-btn {
+            background: rgba(79, 172, 254, 0.1);
+            border: 1px solid #4facfe;
+            color: #4facfe;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: rgba(79, 172, 254, 0.2);
+        }
+
+        /* ===== CHAT AREA ===== */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 30px;
+            overflow-y: auto;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: rgba(79, 172, 254, 0.2);
+        }
+
+        .message.ai .message-avatar {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #000;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .message.ai .message-content {
+            background: rgba(45, 55, 72, 0.8);
+            border-left: 3px solid #4caf50;
+            border-radius: 4px 18px 18px 18px;
+        }
+
+        .message.ai .message-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .loading {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+        }
+
+        .loading span {
+            width: 8px;
+            height: 8px;
+            background: #4facfe;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .loading span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scaleY(0.5);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scaleY(1);
+                opacity: 1;
+            }
+        }
+
+        /* ===== INPUT AREA ===== */
+        .input-area {
+            display: flex;
+            gap: 12px;
+            padding: 20px 30px;
+            background: rgba(13, 16, 23, 0.95);
+            border-top: 1px solid #2d3748;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+        }
+
+        #message-input {
+            flex: 1;
+            background: rgba(45, 55, 72, 0.8);
+            color: #e8ecf1;
+            border: 1px solid #2d3748;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            max-height: 100px;
+            transition: all 0.2s;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: #4facfe;
+            background: rgba(45, 55, 72, 1);
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .credits-display {
+            background: rgba(79, 172, 254, 0.1);
+            border: 1px solid #4facfe;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #4facfe;
+            white-space: nowrap;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(79, 172, 254, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(79, 172, 254, 0.5);
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1f2e;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .modal-content .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #a0aec0;
+        }
+
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(45, 55, 72, 0.8);
+            color: #e8ecf1;
+            border: 1px solid #2d3748;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-content input:focus, .modal-content select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .modal-buttons .save-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #000;
+        }
+
+        .modal-buttons .cancel-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8ecf1;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .message-content {
+                max-width: 90%;
+            }
+
+            .chat-container, .input-area {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span>✦</span>
+                <h1>STAR AI</h1>
+            </div>
+
+            <button class="new-chat-btn" onclick="newChat()">+ محادثة جديدة</button>
+
+            <div class="chat-history" id="chat-history"></div>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <strong id="user-name">المستخدم</strong>
+                    <div>الأرصدة: <span id="credits-sidebar">0</span></div>
+                </div>
+                <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- TOP BAR -->
+            <div class="top-bar">
+                <div class="model-selector">
+                    <label>النموذج:</label>
+                    <select id="model-select" onchange="changeModel()">
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <div class="credits-display">💎 <span id="credits-display">0</span> رصيد</div>
+                    <button class="settings-btn" onclick="openSettings()">⚙️ الإعدادات</button>
+                </div>
+            </div>
+
+            <!-- CHAT AREA -->
+            <div class="chat-container">
+                <div class="messages" id="messages">
+                    <div class="message ai">
+                        <div class="message-avatar">✦</div>
+                        <div class="message-content">
+                            مرحباً! 👋 أنا STAR AI، مساعدك الذكي الموثوق. كيف يمكنني مساعدتك اليوم؟
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INPUT AREA -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="message-input" placeholder="اكتب رسالتك هنا..." />
+                    <button class="send-btn" id="send-btn" onclick="sendMessage()">إرسال</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <h2>⚙️ إعدادات متقدمة</h2>
+
+            <div class="setting-group">
+                <label>درجة الحرية (Temperature):</label>
+                <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" />
+                <small style="color: #718096;">القيمة: <span id="temp-value">0.7</span></small>
+            </div>
+
+            <div class="setting-group">
+                <label>الحد الأقصى للرموز (Max Tokens):</label>
+                <input type="number" id="max-tokens" value="800" min="100" max="4000" />
+            </div>
+
+            <div class="setting-group">
+                <label>نظام التعليمات (System Prompt):</label>
+                <textarea id="system-prompt" style="min-height: 100px; font-family: monospace; font-size: 12px;">Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.</textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="save-btn" onclick="saveSettings()">حفظ الإعدادات</button>
+                <button class="cancel-btn" onclick="closeSettings()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentChatId = null;
+        let chatHistory = {};
+        let userCredits = 0;
+        let userName = '';
+        let settings = {
+            temperature: 0.7,
+            maxTokens: 800,
+            systemPrompt: 'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.'
+        };
+
+        // تحميل بيانات المستخدم
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/me');
+                if (!response.ok) {
+                    location.href = '/login.html';
+                    return;
+                }
+                const data = await response.json();
+                userName = data.user.name;
+                userCredits = data.user.credits;
+                document.getElementById('user-name').textContent = userName;
+                updateCreditsDisplay();
+                loadSettings();
+            } catch (error) {
+                console.error('خطأ في تحميل البيانات:', error);
+            }
+        }
+
+        // تحديث عرض الأرصدة
+        function updateCreditsDisplay() {
+            document.getElementById('credits-display').textContent = userCredits;
+            document.getElementById('credits-sidebar').textContent = userCredits;
+        }
+
+        // إنشاء محادثة جديدة
+        function newChat() {
+            currentChatId = Date.now().toString();
+            chatHistory[currentChatId] = [];
+            document.getElementById('messages').innerHTML = `
+                <div class="message ai">
+                    <div class="message-avatar">✦</div>
+                    <div class="message-content">
+                        مرحباً! 👋 أنا STAR AI، مساعدك الذكي الموثوق. كيف يمكنني مساعدتك اليوم؟
+                    </div>
+                </div>
+            `;
+            updateChatHistory();
+        }
+
+        // تحديث قائمة المحادثات
+        function updateChatHistory() {
+            const chatHistoryDiv = document.getElementById('chat-history');
+            chatHistoryDiv.innerHTML = '';
+            Object.keys(chatHistory).forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'chat-item' + (currentChatId === id ? ' active' : '');
+                const preview = chatHistory[id][0]?.content || 'محادثة جديدة';
+                item.textContent = preview.substring(0, 30) + '...';
+                item.onclick = () => switchChat(id);
+                chatHistoryDiv.appendChild(item);
+            });
+        }
+
+        // التبديل بين المحادثات
+        function switchChat(id) {
+            currentChatId = id;
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            chatHistory[id].forEach(msg => {
+                addMessageToUI(msg.role, msg.content);
+            });
+            updateChatHistory();
+        }
+
+        // إرسال الرسالة
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            if (!currentChatId) newChat();
+
+            // إضافة رسالة المستخدم إلى الواجهة
+            addMessageToUI('user', message);
+            chatHistory[currentChatId].push({ role: 'user', content: message });
+
+            input.value = '';
+            document.getElementById('send-btn').disabled = true;
+
+            // عرض مؤشر التحميل
+            const messagesDiv = document.getElementById('messages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai';
+            loadingDiv.innerHTML = `
+                <div class="message-avatar">✦</div>
+                <div class="message-content">
+                    <div class="loading">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(loadingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                loadingDiv.remove();
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    addMessageToUI('ai', '❌ ' + error.error);
+                    return;
+                }
+
+                const data = await response.json();
+                userCredits = data.credits;
+                updateCreditsDisplay();
+
+                addMessageToUI('ai', data.answer);
+                chatHistory[currentChatId].push({ role: 'assistant', content: data.answer });
+                updateChatHistory();
+            } catch (error) {
+                loadingDiv.remove();
+                addMessageToUI('ai', '❌ خطأ في الاتصال بالخادم: ' + error.message);
+            } finally {
+                document.getElementById('send-btn').disabled = false;
+                document.getElementById('message-input').focus();
+            }
+        }
+
+        // إضافة رسالة إلى الواجهة
+        function addMessageToUI(role, content) {
+            const messagesDiv = document.getElementById('messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + (role === 'user' ? 'user' : 'ai');
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = role === 'user' ? '👤' : '✦';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(msgDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // فتح الإعدادات
+        function openSettings() {
+            document.getElementById('temperature').value = settings.temperature;
+            document.getElementById('max-tokens').value = settings.maxTokens;
+            document.getElementById('system-prompt').value = settings.systemPrompt;
+            document.getElementById('temp-value').textContent = settings.temperature;
+            document.getElementById('settings-modal').classList.add('active');
+        }
+
+        // إغلاق الإعدادات
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.remove('active');
+        }
+
+        // حفظ الإعدادات
+        function saveSettings() {
+            settings.temperature = parseFloat(document.getElementById('temperature').value);
+            settings.maxTokens = parseInt(document.getElementById('max-tokens').value);
+            settings.systemPrompt = document.getElementById('system-prompt').value;
+            localStorage.setItem('star-ai-settings', JSON.stringify(settings));
+            closeSettings();
+            alert('✅ تم حفظ الإعدادات بنجاح!');
+        }
+
+        // تحميل الإعدادات
+        function loadSettings() {
+            const saved = localStorage.getItem('star-ai-settings');
+            if (saved) {
+                settings = JSON.parse(saved);
+            }
+        }
+
+        // تغيير النموذج
+        function changeModel() {
+            const model = document.getElementById('model-select').value;
+            console.log('تم تغيير النموذج إلى:', model);
+        }
+
+        // تسجيل الخروج
+        async function logout() {
+            if (confirm('هل تريد تسجيل الخروج؟')) {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                location.href = '/';
+            }
+        }
+
+        // المفاتيح المختصرة
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                sendMessage();
+            }
+            if (e.key === 'Escape') {
+                closeSettings();
+            }
+        });
+
+        // إغلاق الـ modal عند الضغط خارجها
+        document.getElementById('settings-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'settings-modal') {
+                closeSettings();
+            }
+        });
+
+        // تحديث قيمة Temperature
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            document.getElementById('temp-value').textContent = e.target.value;
+        });
+
+        // تحميل البيانات عند فتح الصفحة
+        loadUserData();
+        newChat();
+    </script>
+</body>
+</html>
