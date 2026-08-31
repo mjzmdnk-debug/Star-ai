@@ -99,7 +99,7 @@ app.get('/api/health',(req,res)=>res.json({
   ok:true,
   aiConnected:Boolean(openai),
   paymentConfigured:Boolean(process.env.IYZICO_API_KEY && process.env.IYZICO_SECRET_KEY),
-  model:process.env.AI_MODEL || 'gpt-5.6-luna'
+  model:process.env.AI_MODEL || 'gpt-4o-mini'
 }));
 
 app.post('/api/auth/register', async (req,res)=>{
@@ -144,16 +144,28 @@ app.post('/api/chat',auth,async(req,res)=>{
   if(!openai) return res.status(503).json({error:'AI bağlantısı için OPENAI_API_KEY ayarlanmalı.'});
   if(req.user.credits<1) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
   try{
-    const response=await openai.responses.create({
-      model:process.env.AI_MODEL || 'gpt-5.6-luna',
-      instructions:'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.',
-      input:message,
-      max_output_tokens:800
+    // ✅ استخدام chat.completions بدلاً من responses (الطريقة الصحيحة)
+    const response=await openai.chat.completions.create({
+      model:process.env.AI_MODEL || 'gpt-4o-mini',
+      messages:[
+        {
+          role:'system',
+          content:'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.'
+        },
+        {
+          role:'user',
+          content:message
+        }
+      ],
+      max_tokens:800,
+      temperature:0.7
     });
+    
     if(!spendCredit(req.user.id)) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
     const fresh=db.prepare('SELECT credits FROM users WHERE id=?').get(req.user.id);
-    res.json({answer:response.output_text,credits:fresh.credits});
-  }catch(e){console.error(e);res.status(500).json({error:'AI isteği başarısız oldu.'});}
+    const answer=response.choices[0]?.message?.content || 'خطأ في الحصول على الرد';
+    res.json({answer,credits:fresh.credits});
+  }catch(e){console.error('OpenAI Error:',e);res.status(500).json({error:'AI isteği başarısız oldu: '+e.message});}
 });
 
 
@@ -267,7 +279,7 @@ app.post('/api/webhooks/iyzico', (req,res)=>{
     const p=req.body||{};
     const signature=req.get('X-IYZ-SIGNATURE-V3')||'';
     if(!process.env.IYZICO_SECRET_KEY || !process.env.IYZICO_MERCHANT_ID) return res.status(503).send('not configured');
-    const message=String(process.env.IYZICO_MERCHANT_ID)+process.env.IYZICO_SECRET_KEY+String(p.iyziEventType||'')+String(p.subscriptionReferenceCode||'')+String(p.orderReferenceCode||'')+String(p.customerReferenceCode||'');
+    const message=String(process.env.IYZICO_MERCHANT_ID)+process.env.IYZICO_SECRET_KEY+String(p.iyziEventType||'')+String(p.subscriptionReferenceCode||'')+String(p.orderReferenceCode||'')+String(p.iyziReferenceCode||'');
     const expected=crypto.createHmac('sha256',process.env.IYZICO_SECRET_KEY).update(message).digest('hex');
     if(!signature || !crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected))) return res.status(401).send('invalid signature');
     const eventRef=p.iyziReferenceCode||`${p.orderReferenceCode}:${p.iyziEventType}`;
