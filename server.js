@@ -286,5 +286,5 @@ app.post('/api/webhooks/iyzico', (req,res)=>{
   }catch(e){console.error(e);res.status(500).send('error');}
 });
 
-app.get('*',(req,res)=>res.sendFile(process.cwd()+'/public/index.html'));
+app.get('/{*splat}',(req,res)=>res.sendFile(process.cwd()+'/public/index.html'));
 app.listen(process.env.PORT||3000,()=>console.log(`STAR AI: http://localhost:${process.env.PORT||3000}`));
