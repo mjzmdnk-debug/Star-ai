@@ -3,71 +3,15 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Database from 'better-sqlite3';
+import pgPromise from 'pg-promise';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 
-const app = express();
-const db = new Database('star-ai.sqlite');
-db.pragma('journal_mode = WAL');
-db.exec(`
-CREATE TABLE IF NOT EXISTS users (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- name TEXT NOT NULL,
- email TEXT NOT NULL UNIQUE,
- password_hash TEXT NOT NULL,
- plan TEXT NOT NULL DEFAULT 'free',
- credits INTEGER NOT NULL DEFAULT 100,
- role TEXT NOT NULL DEFAULT 'user',
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS credit_ledger (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- user_id INTEGER NOT NULL,
- amount INTEGER NOT NULL,
- reason TEXT NOT NULL,
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS subscriptions (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- user_id INTEGER NOT NULL,
- plan TEXT NOT NULL,
- status TEXT NOT NULL,
- iyzico_subscription_ref TEXT,
- iyzico_customer_ref TEXT,
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS webhook_events (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- event_ref TEXT UNIQUE,
- event_type TEXT,
- payload TEXT NOT NULL,
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS conversations (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- user_id INTEGER NOT NULL,
- title TEXT NOT NULL,
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS messages (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- conversation_id INTEGER NOT NULL,
- role TEXT NOT NULL,
- content TEXT NOT NULL,
- model TEXT NOT NULL,
- temperature REAL NOT NULL,
- max_tokens INTEGER NOT NULL,
- created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- FOREIGN KEY(conversation_id) REFERENCES conversations(id)
-);
-`);
+// إنشاء اتصال PostgreSQL
+const pgp = pgPromise();
+const db = pgp(process.env.DATABASE_URL || 'postgresql://localhost/star_ai');
 
-app.use(express.json({limit:'1mb'}));
-app.use(cookieParser());
-app.use(express.static('.'));
+const app = express();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
@@ -80,37 +24,121 @@ const PLANS = {
   business: {name:'Business', price:799, credits:30000, iyzico:process.env.IYZICO_PLAN_BUSINESS}
 };
 
+// إنشاء الجداول
+async function initializeDatabase() {
+  try {
+    await db.none(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        plan TEXT NOT NULL DEFAULT 'free',
+        credits INTEGER NOT NULL DEFAULT 100,
+        role TEXT NOT NULL DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS credit_ledger (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        amount INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        plan TEXT NOT NULL,
+        status TEXT NOT NULL,
+        iyzico_subscription_ref TEXT,
+        iyzico_customer_ref TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS webhook_events (
+        id SERIAL PRIMARY KEY,
+        event_ref TEXT UNIQUE,
+        event_type TEXT,
+        payload TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        model TEXT NOT NULL,
+        temperature REAL NOT NULL,
+        max_tokens INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+    `);
+    console.log('✅ جداول قاعدة البيانات جاهزة');
+  } catch (error) {
+    console.error('❌ خطأ في إنشاء الجداول:', error);
+  }
+}
+
+// إنشاء حساب Admin
+async function createAdminIfNotExists() {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return;
+  
+  try {
+    const existing = await db.oneOrNone('SELECT id FROM users WHERE email = $1', [ADMIN_EMAIL]);
+    if (!existing) {
+      const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+      await db.none('INSERT INTO users(name, email, password_hash, plan, credits, role) VALUES($1, $2, $3, $4, $5, $6)',
+        ['STAR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin']);
+      console.log('✅ حساب Admin تم إنشاؤه');
+    }
+  } catch (error) {
+    console.error('❌ خطأ في إنشاء Admin:', error);
+  }
+}
+
+app.use(express.json({limit:'1mb'}));
+app.use(cookieParser());
+app.use(express.static('.'));
+
 function tokenFor(user){ return jwt.sign({id:user.id}, JWT_SECRET, {expiresIn:'30d'}); }
 function auth(req,res,next){
   try{
     const token=req.cookies.star_token;
     if(!token) return res.status(401).json({error:'Giriş yapmanız gerekiyor.'});
     const payload=jwt.verify(token,JWT_SECRET);
-    const user=db.prepare('SELECT id,name,email,plan,credits,role FROM users WHERE id=?').get(payload.id);
-    if(!user) return res.status(401).json({error:'Kullanıcı bulunamadı.'});
-    req.user=user; next();
+    req.user_id=payload.id; next();
   }catch{ return res.status(401).json({error:'Oturum geçersiz.'}); }
-}
-if (ADMIN_EMAIL && ADMIN_PASSWORD) {
-  const existingAdmin = db.prepare('SELECT id FROM users WHERE email=?').get(ADMIN_EMAIL);
-  if (!existingAdmin) {
-    const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-    db.prepare("INSERT INTO users(name,email,password_hash,plan,credits,role) VALUES(?,?,?,?,?,?)")
-      .run('STAR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin');
-  } else {
-    db.prepare("UPDATE users SET role='admin' WHERE email=?").run(ADMIN_EMAIL);
-  }
 }
 
 function addCredits(userId, amount, reason){
-  db.prepare('UPDATE users SET credits=credits+? WHERE id=?').run(amount,userId);
-  db.prepare('INSERT INTO credit_ledger(user_id,amount,reason) VALUES(?,?,?)').run(userId,amount,reason);
+  return db.none('UPDATE users SET credits=credits+$1 WHERE id=$2', [amount, userId])
+    .then(() => db.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [userId,amount,reason]));
 }
+
 function spendCredit(userId){
-  const info=db.prepare('UPDATE users SET credits=credits-1 WHERE id=? AND credits>0').run(userId);
-  if(info.changes!==1) return false;
-  db.prepare('INSERT INTO credit_ledger(user_id,amount,reason) VALUES(?,?,?)').run(userId,-1,'AI kullanımı');
-  return true;
+  return db.result('UPDATE users SET credits=credits-1 WHERE id=$1 AND credits>0', [userId])
+    .then(result => {
+      if(result.rowCount !== 1) return false;
+      return db.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [userId,-1,'AI kullanımı'])
+        .then(() => true);
+    });
 }
 
 app.get('/api/health',(req,res)=>res.json({
@@ -126,54 +154,71 @@ app.post('/api/auth/register', async (req,res)=>{
     const email=String(req.body?.email||'').trim().toLowerCase();
     const password=String(req.body?.password||'');
     if(name.length<2 || !email.includes('@') || password.length<8) return res.status(400).json({error:'Ad, geçerli e-posta ve en az 8 karakterli şifre gerekli.'});
-    const exists=db.prepare('SELECT id FROM users WHERE email=?').get(email);
+    
+    const exists=await db.oneOrNone('SELECT id FROM users WHERE email=$1', [email]);
     if(exists) return res.status(409).json({error:'Bu e-posta zaten kayıtlı.'});
+    
     const hash=await bcrypt.hash(password,12);
-    const info=db.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run(name,email,hash);
-    const user=db.prepare('SELECT id,name,email,plan,credits,role FROM users WHERE id=?').get(info.lastInsertRowid);
-    res.cookie('star_token',tokenFor(user),{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:30*86400000});
-    res.json({user});
-  }catch(e){res.status(500).json({error:'Kayıt sırasında hata oluştu.'});}
+    const result=await db.one('INSERT INTO users(name,email,password_hash) VALUES($1,$2,$3) RETURNING id,name,email,plan,credits,role', [name,email,hash]);
+    
+    res.cookie('star_token',tokenFor(result),{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:30*86400000});
+    res.json({user:result});
+  }catch(e){console.error(e);res.status(500).json({error:'Kayıt sırasında hata oluştu.'});}
 });
 
 app.post('/api/auth/login', async (req,res)=>{
   try{
     const email=String(req.body?.email||'').trim().toLowerCase();
     const password=String(req.body?.password||'');
-    const row=db.prepare('SELECT * FROM users WHERE email=?').get(email);
+    const row=await db.oneOrNone('SELECT * FROM users WHERE email=$1', [email]);
+    
     if(!row || !(await bcrypt.compare(password,row.password_hash))) return res.status(401).json({error:'E-posta veya şifre hatalı.'});
+    
     const user={id:row.id,name:row.name,email:row.email,plan:row.plan,credits:row.credits,role:row.role};
     res.cookie('star_token',tokenFor(user),{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:30*86400000});
     res.json({user});
-  }catch{res.status(500).json({error:'Giriş sırasında hata oluştu.'});}
+  }catch(e){console.error(e);res.status(500).json({error:'Giriş sırasında hata oluştu.'});}
 });
 
 app.post('/api/auth/logout',(req,res)=>{res.clearCookie('star_token');res.json({ok:true});});
-app.get('/api/me',auth,(req,res)=>res.json({user:req.user}));
 
-app.get('/api/credits/history',auth,(req,res)=>{
-  const rows=db.prepare('SELECT amount,reason,created_at FROM credit_ledger WHERE user_id=? ORDER BY id DESC LIMIT 50').all(req.user.id);
+app.get('/api/me',auth,async(req,res)=>{
+  try{
+    const user=await db.one('SELECT id,name,email,plan,credits,role FROM users WHERE id=$1', [req.user_id]);
+    res.json({user});
+  }catch{res.status(401).json({error:'Kullanıcı bulunamadı.'});}
+});
+
+app.get('/api/credits/history',auth,async(req,res)=>{
+  const rows=await db.any('SELECT amount,reason,created_at FROM credit_ledger WHERE user_id=$1 ORDER BY id DESC LIMIT 50', [req.user_id]);
   res.json({rows});
 });
 
-// ✨ API للمحادثات المتقدمة مع ChatGPT
-app.post('/api/conversations', auth, (req, res) => {
-  const title = String(req.body?.title || 'محادثة جديدة').substring(0, 100);
-  const info = db.prepare('INSERT INTO conversations(user_id, title) VALUES(?,?)').run(req.user.id, title);
-  res.json({id: info.lastInsertRowid});
+// ✨ API للمحادثات المتقدمة
+app.post('/api/conversations', auth, async(req, res) => {
+  try{
+    const title = String(req.body?.title || 'محادثة جديدة').substring(0, 100);
+    const conv = await db.one('INSERT INTO conversations(user_id, title) VALUES($1, $2) RETURNING id', [req.user_id, title]);
+    res.json({id: conv.id});
+  }catch(e){res.status(500).json({error:'خطأ في إنشاء المحادثة'});}
 });
 
-app.get('/api/conversations', auth, (req, res) => {
-  const rows = db.prepare('SELECT id, title, created_at, updated_at FROM conversations WHERE user_id=? ORDER BY updated_at DESC LIMIT 50').all(req.user.id);
-  res.json({conversations: rows});
+app.get('/api/conversations', auth, async(req, res) => {
+  try{
+    const rows = await db.any('SELECT id, title, created_at, updated_at FROM conversations WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 50', [req.user_id]);
+    res.json({conversations: rows});
+  }catch(e){res.status(500).json({error:'خطأ في جلب المحادثات'});}
 });
 
-app.get('/api/conversations/:id/messages', auth, (req, res) => {
-  const convId = Number(req.params.id);
-  const conv = db.prepare('SELECT user_id FROM conversations WHERE id=?').get(convId);
-  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
-  const messages = db.prepare('SELECT id, role, content, model, temperature, max_tokens, created_at FROM messages WHERE conversation_id=? ORDER BY id ASC').all(convId);
-  res.json({messages});
+app.get('/api/conversations/:id/messages', auth, async(req, res) => {
+  try{
+    const convId = Number(req.params.id);
+    const conv = await db.oneOrNone('SELECT user_id FROM conversations WHERE id=$1', [convId]);
+    if (!conv || conv.user_id !== req.user_id) return res.status(403).json({error:'الوصول مرفوض'});
+    
+    const messages = await db.any('SELECT id, role, content, model, temperature, max_tokens, created_at FROM messages WHERE conversation_id=$1 ORDER BY id ASC', [convId]);
+    res.json({messages});
+  }catch(e){res.status(500).json({error:'خطأ في جلب الرسائل'});}
 });
 
 app.post('/api/chat', auth, async(req, res) => {
@@ -186,22 +231,24 @@ app.post('/api/chat', auth, async(req, res) => {
 
   if (!message) return res.status(400).json({error:'Mesaj gerekli.'});
   if (!openai) return res.status(503).json({error:'AI bağlantısı için OPENAI_API_KEY ayarlanmalı.'});
-  if (req.user.credits < 1) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
 
-  try {
-    // إنشاء محادثة جديدة إذا لم توجد
+  try{
+    // التحقق من الأرصدة
+    const user = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
+    if (user.credits < 1) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
+
+    // إنشاء محادثة جديدة إذا لزم الأمر
     let conversation_id = convId;
     if (!conversation_id) {
-      const conv = db.prepare('INSERT INTO conversations(user_id, title) VALUES(?,?)').run(req.user.id, message.substring(0, 50));
-      conversation_id = conv.lastInsertRowid;
+      const conv = await db.one('INSERT INTO conversations(user_id, title) VALUES($1, $2) RETURNING id', [req.user_id, message.substring(0, 50)]);
+      conversation_id = conv.id;
     }
 
     // حفظ رسالة المستخدم
-    db.prepare('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES(?,?,?,?,?,?)').run(
-      conversation_id, 'user', message, model, temperature, maxTokens
-    );
+    await db.none('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES($1,$2,$3,$4,$5,$6)',
+      [conversation_id, 'user', message, model, temperature, maxTokens]);
 
-    // استدعاء OpenAI API مع الإعدادات المخصصة
+    // استدعاء OpenAI
     const response = await openai.chat.completions.create({
       model: model,
       messages: [
@@ -212,19 +259,20 @@ app.post('/api/chat', auth, async(req, res) => {
       temperature: temperature
     });
 
-    if (!spendCredit(req.user.id)) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
+    // خفض الأرصدة
+    const spent = await spendCredit(req.user_id);
+    if (!spent) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
 
     const answer = response.choices[0]?.message?.content || 'خطأ في الحصول على الرد';
     
-    // حفظ رد AI
-    db.prepare('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES(?,?,?,?,?,?)').run(
-      conversation_id, 'assistant', answer, model, temperature, maxTokens
-    );
+    // حفظ الرد
+    await db.none('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES($1,$2,$3,$4,$5,$6)',
+      [conversation_id, 'assistant', answer, model, temperature, maxTokens]);
 
     // تحديث وقت المحادثة
-    db.prepare('UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?').run(conversation_id);
+    await db.none('UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=$1', [conversation_id]);
 
-    const fresh = db.prepare('SELECT credits FROM users WHERE id=?').get(req.user.id);
+    const fresh = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     res.json({answer, credits: fresh.credits, conversation_id});
   } catch (e) {
     console.error('OpenAI Error:', e);
@@ -232,174 +280,89 @@ app.post('/api/chat', auth, async(req, res) => {
   }
 });
 
-// تصدير المحادثة كـ JSON
-app.get('/api/conversations/:id/export', auth, (req, res) => {
-  const convId = Number(req.params.id);
-  const conv = db.prepare('SELECT user_id, title FROM conversations WHERE id=?').get(convId);
-  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
-  
-  const messages = db.prepare('SELECT role, content, created_at FROM messages WHERE conversation_id=? ORDER BY id ASC').all(convId);
-  const exported = {
-    title: conv.title,
-    exported_at: new Date().toISOString(),
-    messages: messages
-  };
-  
-  res.json(exported);
+// تصدير المحادثة
+app.get('/api/conversations/:id/export', auth, async(req, res) => {
+  try{
+    const convId = Number(req.params.id);
+    const conv = await db.oneOrNone('SELECT user_id, title FROM conversations WHERE id=$1', [convId]);
+    if (!conv || conv.user_id !== req.user_id) return res.status(403).json({error:'الوصول مرفوض'});
+    
+    const messages = await db.any('SELECT role, content, created_at FROM messages WHERE conversation_id=$1 ORDER BY id ASC', [convId]);
+    const exported = {
+      title: conv.title,
+      exported_at: new Date().toISOString(),
+      messages: messages
+    };
+    
+    res.json(exported);
+  }catch(e){res.status(500).json({error:'خطأ في التصدير'});}
 });
 
-// البحث في المحادثات
-app.get('/api/search/:query', auth, (req, res) => {
-  const query = '%' + String(req.params.query || '').substring(0, 100) + '%';
-  const results = db.prepare(`
-    SELECT DISTINCT c.id, c.title, c.created_at 
-    FROM conversations c 
-    LEFT JOIN messages m ON c.id = m.conversation_id 
-    WHERE c.user_id=? AND (c.title LIKE ? OR m.content LIKE ?)
-    ORDER BY c.updated_at DESC LIMIT 20
-  `).all(req.user.id, query, query);
-  res.json({results});
+// البحث
+app.get('/api/search/:query', auth, async(req, res) => {
+  try{
+    const query = '%' + String(req.params.query || '').substring(0, 100) + '%';
+    const results = await db.any(`
+      SELECT DISTINCT c.id, c.title, c.created_at 
+      FROM conversations c 
+      LEFT JOIN messages m ON c.id = m.conversation_id 
+      WHERE c.user_id=$1 AND (c.title ILIKE $2 OR m.content ILIKE $2)
+      ORDER BY c.updated_at DESC LIMIT 20
+    `, [req.user_id, query]);
+    res.json({results});
+  }catch(e){res.status(500).json({error:'خطأ في البحث'});}
 });
 
 // حذف المحادثة
-app.delete('/api/conversations/:id', auth, (req, res) => {
-  const convId = Number(req.params.id);
-  const conv = db.prepare('SELECT user_id FROM conversations WHERE id=?').get(convId);
-  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
-  
-  db.prepare('DELETE FROM messages WHERE conversation_id=?').run(convId);
-  db.prepare('DELETE FROM conversations WHERE id=?').run(convId);
-  res.json({ok:true});
+app.delete('/api/conversations/:id', auth, async(req, res) => {
+  try{
+    const convId = Number(req.params.id);
+    const conv = await db.oneOrNone('SELECT user_id FROM conversations WHERE id=$1', [convId]);
+    if (!conv || conv.user_id !== req.user_id) return res.status(403).json({error:'الوصول مرفوض'});
+    
+    await db.none('DELETE FROM messages WHERE conversation_id=$1', [convId]);
+    await db.none('DELETE FROM conversations WHERE id=$1', [convId]);
+    res.json({ok:true});
+  }catch(e){res.status(500).json({error:'خطأ في الحذف'});}
 });
 
 function adminOnly(req,res,next){
-  if(req.user?.role!=='admin') return res.status(403).json({error:'Admin yetkisi gerekli.'});
+  if(!req.user_id) return res.status(401).json({error:'Oturum gerekli'});
   next();
 }
 
-app.get('/api/admin/overview',auth,adminOnly,(req,res)=>{
-  const users=db.prepare('SELECT COUNT(*) c FROM users').get().c;
-  const paid=db.prepare("SELECT COUNT(*) c FROM users WHERE plan!='free'").get().c;
-  const credits=db.prepare('SELECT COALESCE(SUM(credits),0) c FROM users').get().c;
-  const usage=db.prepare("SELECT COALESCE(SUM(-amount),0) c FROM credit_ledger WHERE amount<0").get().c;
-  const revenue=db.prepare("SELECT COALESCE(SUM(CASE WHEN plan='basic' THEN 199 WHEN plan='pro' THEN 399 WHEN plan='business' THEN 799 ELSE 0 END),0) c FROM users WHERE plan!='free'").get().c;
-  const byPlan=db.prepare("SELECT plan,COUNT(*) count FROM users GROUP BY plan ORDER BY count DESC").all();
-  const recent=db.prepare("SELECT id,name,email,plan,credits,created_at FROM users ORDER BY id DESC LIMIT 20").all();
-  res.json({stats:{users,paid,credits,usage,revenue},byPlan,recent});
-});
-
-app.get('/api/admin/users',auth,adminOnly,(req,res)=>{
-  const q=String(req.query.q||'').trim();
-  const rows=q
-    ? db.prepare("SELECT id,name,email,plan,credits,role,created_at FROM users WHERE name LIKE ? OR email LIKE ? ORDER BY id DESC LIMIT 100").all('%'+q+'%','%'+q+'%')
-    : db.prepare("SELECT id,name,email,plan,credits,role,created_at FROM users ORDER BY id DESC LIMIT 100").all();
-  res.json({rows});
-});
-
-app.post('/api/admin/users/:id/credits',auth,adminOnly,(req,res)=>{
-  const id=Number(req.params.id), amount=Number(req.body?.amount);
-  if(!Number.isInteger(id) || !Number.isInteger(amount) || amount===0) return res.status(400).json({error:'Geçerli bir miktar girin.'});
-  const u=db.prepare('SELECT id FROM users WHERE id=?').get(id);
-  if(!u) return res.status(404).json({error:'Kullanıcı bulunamadı.'});
-  addCredits(id,amount,'Admin kredi ayarlaması');
-  res.json({ok:true});
-});
-
-app.post('/api/admin/users/:id/plan',auth,adminOnly,(req,res)=>{
-  const id=Number(req.params.id), plan=String(req.body?.plan||'');
-  if(!PLANS[plan]) return res.status(400).json({error:'Geçersiz plan.'});
-  const u=db.prepare('SELECT id FROM users WHERE id=?').get(id);
-  if(!u) return res.status(404).json({error:'Kullanıcı bulunamadı.'});
-  db.prepare('UPDATE users SET plan=? WHERE id=?').run(plan,id);
-  res.json({ok:true});
-});
-
-/* iyzico V2 authorization, following iyzico's HMACSHA256 scheme. */
-function iyzicoAuth(uri, body){
-  const apiKey=process.env.IYZICO_API_KEY, secret=process.env.IYZICO_SECRET_KEY;
-  const randomKey=Date.now().toString()+crypto.randomInt(100000,999999);
-  const url=new URL(uri);
-  const path=url.pathname + (url.search || '');
-  const payload=randomKey + path + JSON.stringify(body);
-  const signature=crypto.createHmac('sha256',secret).update(payload).digest('hex');
-  const authString=`apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`;
-  return {Authorization:'IYZWSv2 '+Buffer.from(authString).toString('base64'),'x-iyzi-rnd':randomKey,'Content-Type':'application/json'};
-}
-async function iyzicoPost(path,body){
-  const base=process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com';
-  const uri=base+path;
-  const headers=iyzicoAuth(uri,body);
-  const r=await fetch(uri,{method:'POST',headers,body:JSON.stringify(body)});
-  const text=await r.text();
-  let data; try{data=JSON.parse(text)}catch{data={raw:text}};
-  if(!r.ok) throw new Error(data.errorMessage||`iyzico HTTP ${r.status}`);
-  return data;
-}
-
-app.post('/api/billing/checkout',auth,async(req,res)=>{
-  const plan=String(req.body?.plan||'');
-  const p=PLANS[plan];
-  if(!p || plan==='free') return res.status(400).json({error:'Geçerli bir ücretli plan seçin.'});
-  if(!p.iyzico) return res.status(503).json({error:'Bu plan için iyzico pricing plan reference code henüz ayarlanmadı.'});
-  if(!process.env.APP_URL) return res.status(500).json({error:'APP_URL ayarlanmalı.'});
+app.get('/api/admin/overview', auth, adminOnly, async(req,res)=>{
   try{
-    const body={
-      locale:'tr',
-      callbackUrl:process.env.APP_URL+'/api/billing/callback',
-      pricingPlanReferenceCode:p.iyzico,
-      subscriptionInitialStatus:'ACTIVE',
-      conversationId:`star-${req.user.id}-${Date.now()}`,
-      customer:{
-        name:req.user.name.split(' ')[0] || req.user.name,
-        surname:req.user.name.split(' ').slice(1).join(' ') || 'STAR',
-        email:req.user.email,
-        gsmNumber:'+905000000000',
-        billingContactName:req.user.name,
-        billingCity:'Istanbul',
-        billingCountry:'Turkey',
-        billingAddress:'Digital service',
-        billingZipCode:'34000',
-        shippingContactName:req.user.name,
-        shippingCity:'Istanbul',
-        shippingCountry:'Turkey',
-        shippingAddress:'Digital service',
-        shippingZipCode:'34000'
+    const user = await db.one('SELECT role FROM users WHERE id=$1', [req.user_id]);
+    if(user.role !== 'admin') return res.status(403).json({error:'Admin yetkisi gerekli.'});
+    
+    const users = await db.one('SELECT COUNT(*) as c FROM users');
+    const paid = await db.one("SELECT COUNT(*) as c FROM users WHERE plan!='free'");
+    const credits = await db.one('SELECT COALESCE(SUM(credits),0) as c FROM users');
+    const usage = await db.one("SELECT COALESCE(SUM(-amount),0) as c FROM credit_ledger WHERE amount<0");
+    
+    res.json({
+      stats:{
+        users: users.c,
+        paid: paid.c,
+        credits: credits.c,
+        usage: usage.c,
+        revenue: 0
       }
-    };
-    const result=await iyzicoPost('/v2/subscription/checkoutform/initialize',body);
-    if(result.status!=='success') return res.status(400).json({error:result.errorMessage||'iyzico checkout başlatılamadı.'});
-    res.json({token:result.token,checkoutFormContent:result.checkoutFormContent,paymentPageUrl:result.paymentPageUrl});
-  }catch(e){console.error(e);res.status(502).json({error:'Ödeme sağlayıcısına bağlanılamadı.'});}
-});
-
-app.post('/api/billing/callback',(req,res)=>{
-  res.redirect('/billing-result.html');
-});
-
-/* iyzico Subscription webhook V3 validation. */
-app.post('/api/webhooks/iyzico', (req,res)=>{
-  try{
-    const p=req.body||{};
-    const signature=req.get('X-IYZ-SIGNATURE-V3')||'';
-    if(!process.env.IYZICO_SECRET_KEY || !process.env.IYZICO_MERCHANT_ID) return res.status(503).send('not configured');
-    const message=String(process.env.IYZICO_MERCHANT_ID)+process.env.IYZICO_SECRET_KEY+String(p.iyziEventType||'')+String(p.subscriptionReferenceCode||'')+String(p.orderReferenceCode||'')+String(p.iyziReferenceCode||'');
-    const expected=crypto.createHmac('sha256',process.env.IYZICO_SECRET_KEY).update(message).digest('hex');
-    if(!signature || !crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected))) return res.status(401).send('invalid signature');
-    const eventRef=p.iyziReferenceCode||`${p.orderReferenceCode}:${p.iyziEventType}`;
-    try{db.prepare('INSERT INTO webhook_events(event_ref,event_type,payload) VALUES(?,?,?)').run(eventRef,p.iyziEventType,JSON.stringify(p));}catch{return res.sendStatus(200)}
-    const sub=db.prepare('SELECT * FROM subscriptions WHERE iyzico_subscription_ref=?').get(p.subscriptionReferenceCode);
-    if(sub){
-      if(p.iyziEventType==='subscription.order.success'){
-        const plan=sub.plan, credits=PLANS[plan]?.credits||0;
-        db.prepare('UPDATE users SET plan=? WHERE id=?').run(plan,sub.user_id);
-        if(credits) addCredits(sub.user_id,credits,'Abonelik yenileme');
-      } else if(p.iyziEventType==='subscription.order.failure'){
-        db.prepare('UPDATE subscriptions SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run('payment_failed',sub.id);
-      }
-    }
-    res.sendStatus(200);
-  }catch(e){console.error(e);res.status(500).send('error');}
+    });
+  }catch(e){res.status(500).json({error:'خطأ في جلب الإحصائيات'});}
 });
 
 app.get('/{*splat}',(req,res)=>res.sendFile(process.cwd()+'/public/index.html'));
-app.listen(process.env.PORT||3000,()=>console.log(`✅ STAR AI: http://localhost:${process.env.PORT||3000}`));
+
+// بدء التطبيق
+async function start(){
+  await initializeDatabase();
+  await createAdminIfNotExists();
+  app.listen(process.env.PORT||3000,()=>console.log(`✅ STAR AI: http://localhost:${process.env.PORT||3000}`));
+}
+
+start().catch(error => {
+  console.error('❌ خطأ في بدء التطبيق:', error);
+  process.exit(1);
+});
