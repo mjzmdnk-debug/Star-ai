@@ -115,7 +115,7 @@ async function createAdminIfNotExists() {
 
 app.use(express.json({limit:'1mb'}));
 app.use(cookieParser());
-app.use(express.static('public'));
+app.use(express.static('.'));
 
 function tokenFor(user){ return jwt.sign({id:user.id}, JWT_SECRET, {expiresIn:'30d'}); }
 function auth(req,res,next){
