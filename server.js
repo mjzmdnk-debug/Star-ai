@@ -45,6 +45,24 @@ CREATE TABLE IF NOT EXISTS webhook_events (
  payload TEXT NOT NULL,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS conversations (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ user_id INTEGER NOT NULL,
+ title TEXT NOT NULL,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS messages (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ conversation_id INTEGER NOT NULL,
+ role TEXT NOT NULL,
+ content TEXT NOT NULL,
+ model TEXT NOT NULL,
+ temperature REAL NOT NULL,
+ max_tokens INTEGER NOT NULL,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(conversation_id) REFERENCES conversations(id)
+);
 `);
 
 app.use(express.json({limit:'1mb'}));
@@ -138,36 +156,121 @@ app.get('/api/credits/history',auth,(req,res)=>{
   res.json({rows});
 });
 
-app.post('/api/chat',auth,async(req,res)=>{
-  const message=String(req.body?.message||'').trim();
-  if(!message) return res.status(400).json({error:'Mesaj gerekli.'});
-  if(!openai) return res.status(503).json({error:'AI bağlantısı için OPENAI_API_KEY ayarlanmalı.'});
-  if(req.user.credits<1) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
-  try{
-    // ✅ استخدام chat.completions بدلاً من responses (الطريقة الصحيحة)
-    const response=await openai.chat.completions.create({
-      model:process.env.AI_MODEL || 'gpt-4o-mini',
-      messages:[
-        {
-          role:'system',
-          content:'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.'
-        },
-        {
-          role:'user',
-          content:message
-        }
-      ],
-      max_tokens:800,
-      temperature:0.7
-    });
-    
-    if(!spendCredit(req.user.id)) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
-    const fresh=db.prepare('SELECT credits FROM users WHERE id=?').get(req.user.id);
-    const answer=response.choices[0]?.message?.content || 'خطأ في الحصول على الرد';
-    res.json({answer,credits:fresh.credits});
-  }catch(e){console.error('OpenAI Error:',e);res.status(500).json({error:'AI isteği başarısız oldu: '+e.message});}
+// ✨ API للمحادثات المتقدمة مع ChatGPT
+app.post('/api/conversations', auth, (req, res) => {
+  const title = String(req.body?.title || 'محادثة جديدة').substring(0, 100);
+  const info = db.prepare('INSERT INTO conversations(user_id, title) VALUES(?,?)').run(req.user.id, title);
+  res.json({id: info.lastInsertRowid});
 });
 
+app.get('/api/conversations', auth, (req, res) => {
+  const rows = db.prepare('SELECT id, title, created_at, updated_at FROM conversations WHERE user_id=? ORDER BY updated_at DESC LIMIT 50').all(req.user.id);
+  res.json({conversations: rows});
+});
+
+app.get('/api/conversations/:id/messages', auth, (req, res) => {
+  const convId = Number(req.params.id);
+  const conv = db.prepare('SELECT user_id FROM conversations WHERE id=?').get(convId);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
+  const messages = db.prepare('SELECT id, role, content, model, temperature, max_tokens, created_at FROM messages WHERE conversation_id=? ORDER BY id ASC').all(convId);
+  res.json({messages});
+});
+
+app.post('/api/chat', auth, async(req, res) => {
+  const message = String(req.body?.message || '').trim();
+  const convId = Number(req.body?.conversation_id || 0);
+  const model = String(req.body?.model || 'gpt-4o-mini');
+  const temperature = parseFloat(req.body?.temperature || 0.7);
+  const maxTokens = parseInt(req.body?.max_tokens || 800);
+  const systemPrompt = String(req.body?.system_prompt || 'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver. Gereksiz uzatma.');
+
+  if (!message) return res.status(400).json({error:'Mesaj gerekli.'});
+  if (!openai) return res.status(503).json({error:'AI bağlantısı için OPENAI_API_KEY ayarlanmalı.'});
+  if (req.user.credits < 1) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
+
+  try {
+    // إنشاء محادثة جديدة إذا لم توجد
+    let conversation_id = convId;
+    if (!conversation_id) {
+      const conv = db.prepare('INSERT INTO conversations(user_id, title) VALUES(?,?)').run(req.user.id, message.substring(0, 50));
+      conversation_id = conv.lastInsertRowid;
+    }
+
+    // حفظ رسالة المستخدم
+    db.prepare('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES(?,?,?,?,?,?)').run(
+      conversation_id, 'user', message, model, temperature, maxTokens
+    );
+
+    // استدعاء OpenAI API مع الإعدادات المخصصة
+    const response = await openai.chat.completions.create({
+      model: model,
+      messages: [
+        {role: 'system', content: systemPrompt},
+        {role: 'user', content: message}
+      ],
+      max_tokens: maxTokens,
+      temperature: temperature
+    });
+
+    if (!spendCredit(req.user.id)) return res.status(402).json({error:'Kredi bakiyeniz bitti.'});
+
+    const answer = response.choices[0]?.message?.content || 'خطأ في الحصول على الرد';
+    
+    // حفظ رد AI
+    db.prepare('INSERT INTO messages(conversation_id, role, content, model, temperature, max_tokens) VALUES(?,?,?,?,?,?)').run(
+      conversation_id, 'assistant', answer, model, temperature, maxTokens
+    );
+
+    // تحديث وقت المحادثة
+    db.prepare('UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?').run(conversation_id);
+
+    const fresh = db.prepare('SELECT credits FROM users WHERE id=?').get(req.user.id);
+    res.json({answer, credits: fresh.credits, conversation_id});
+  } catch (e) {
+    console.error('OpenAI Error:', e);
+    res.status(500).json({error: 'AI isteği başarısız oldu: ' + e.message});
+  }
+});
+
+// تصدير المحادثة كـ JSON
+app.get('/api/conversations/:id/export', auth, (req, res) => {
+  const convId = Number(req.params.id);
+  const conv = db.prepare('SELECT user_id, title FROM conversations WHERE id=?').get(convId);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
+  
+  const messages = db.prepare('SELECT role, content, created_at FROM messages WHERE conversation_id=? ORDER BY id ASC').all(convId);
+  const exported = {
+    title: conv.title,
+    exported_at: new Date().toISOString(),
+    messages: messages
+  };
+  
+  res.json(exported);
+});
+
+// البحث في المحادثات
+app.get('/api/search/:query', auth, (req, res) => {
+  const query = '%' + String(req.params.query || '').substring(0, 100) + '%';
+  const results = db.prepare(`
+    SELECT DISTINCT c.id, c.title, c.created_at 
+    FROM conversations c 
+    LEFT JOIN messages m ON c.id = m.conversation_id 
+    WHERE c.user_id=? AND (c.title LIKE ? OR m.content LIKE ?)
+    ORDER BY c.updated_at DESC LIMIT 20
+  `).all(req.user.id, query, query);
+  res.json({results});
+});
+
+// حذف المحادثة
+app.delete('/api/conversations/:id', auth, (req, res) => {
+  const convId = Number(req.params.id);
+  const conv = db.prepare('SELECT user_id FROM conversations WHERE id=?').get(convId);
+  if (!conv || conv.user_id !== req.user.id) return res.status(403).json({error:'الوصول مرفوض'});
+  
+  db.prepare('DELETE FROM messages WHERE conversation_id=?').run(convId);
+  db.prepare('DELETE FROM conversations WHERE id=?').run(convId);
+  res.json({ok:true});
+});
 
 function adminOnly(req,res,next){
   if(req.user?.role!=='admin') return res.status(403).json({error:'Admin yetkisi gerekli.'});
@@ -299,4 +402,4 @@ app.post('/api/webhooks/iyzico', (req,res)=>{
 });
 
 app.get('/{*splat}',(req,res)=>res.sendFile(process.cwd()+'/public/index.html'));
-app.listen(process.env.PORT||3000,()=>console.log(`STAR AI: http://localhost:${process.env.PORT||3000}`));
+app.listen(process.env.PORT||3000,()=>console.log(`✅ STAR AI: http://localhost:${process.env.PORT||3000}`));
