@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS webhook_events (
 
 app.use(express.json({limit:'1mb'}));
 app.use(cookieParser());
-app.use(express.static('public'));
+app.use(express.static('.'));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
