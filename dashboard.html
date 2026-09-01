@@ -1,7 +1,515 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STAR AI — Panel</title><link rel="stylesheet" href="/styles.css"></head><body><header><a class="brand" href="/">✦ STAR AI</a><span id="user"></span><button id="logout">Çıkış</button></header><main class="dashboard"><div class="dash-head"><div><span class="eyebrow">KONTROL PANELİ</span><h1>Merhaba! 👋</h1><p>Bugün ne üretmek istersin?</p></div><div class="credits"><small>Kredi</small><b id="credits">—</b></div></div><section class="chat"><div id="messages"><div class="msg ai">Merhaba! Ben STAR AI. Nasıl yardımcı olabilirim?</div></div><form id="chat"><input id="message" placeholder="Mesajınızı yazın…" required><button class="btn">Gönder ↑</button></form></section><section class="plans"><div><b>Basic</b><strong>₺199</strong><button onclick="buy('basic')">Basic'e geç</button></div><div class="popular"><b>Pro</b><strong>₺399</strong><button onclick="buy('pro')">Pro'ya geç</button></div><div><b>Business</b><strong>₺799</strong><button onclick="buy('business')">Business'a geç</button></div></section></main><script>
-async function load(){const r=await fetch('/api/me');if(!r.ok){location.href='/login.html';return}const d=await r.json();user.textContent=d.user.name;credits.textContent=d.user.credits}
-chat.onsubmit=async e=>{e.preventDefault();const t=message.value.trim();if(!t)return;messages.insertAdjacentHTML('beforeend','<div class="msg user"></div>');messages.lastElementChild.textContent=t;message.value='';const p=document.createElement('div');p.className='msg ai';p.textContent='STAR AI düşünüyor…';messages.appendChild(p);const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});const d=await r.json();p.textContent=d.answer||d.error;if(d.credits!==undefined)credits.textContent=d.credits}
-logout.onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.href='/'}
-async function buy(plan){const r=await fetch('/api/billing/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})});const d=await r.json();if(!r.ok){alert(d.error);return}if(d.paymentPageUrl)location.href=d.paymentPageUrl;else if(d.checkoutFormContent){const w=window.open();w.document.write(d.checkoutFormContent)}}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05050b">
+  <title>STAR AI — Panel</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="dashboard-page">
+
+<header class="dash-nav">
+
+  <a class="brand" href="/">
+    ✦ STAR <b>AI</b>
+  </a>
+
+  <div class="dash-user">
+
+    <span id="user">
+      Yükleniyor…
+    </span>
+
+    <button
+      id="logout"
+      class="logout"
+      type="button">
+      Çıkış
+    </button>
+
+  </div>
+
+</header>
+
+
+<main class="dashboard">
+
+  <div class="dash-head">
+
+    <div>
+
+      <span class="eyebrow">
+        KONTROL PANELİ
+      </span>
+
+      <h1>
+        Merhaba! 👋
+      </h1>
+
+      <p>
+        Bugün ne üretmek istersin?
+      </p>
+
+    </div>
+
+
+    <div class="credits">
+
+      <small>
+        Kalan kredi
+      </small>
+
+      <b id="credits">
+        —
+      </b>
+
+    </div>
+
+  </div>
+
+
+  <section class="chat">
+
+    <div class="chat-top">
+
+      <div>
+
+        <b>
+          ✦ STAR AI Assistant
+        </b>
+
+        <small>
+          Çevrimiçi • Hızlı yanıt
+        </small>
+
+      </div>
+
+      <span class="status-dot"></span>
+
+    </div>
+
+
+    <div id="messages">
+
+      <div class="msg ai">
+        Merhaba! Ben STAR AI.
+        Nasıl yardımcı olabilirim?
+      </div>
+
+    </div>
+
+
+    <form id="chat">
+
+      <input
+        id="message"
+        type="text"
+        autocomplete="off"
+        placeholder="Mesajınızı yazın…"
+        required>
+
+      <button
+        class="btn"
+        type="submit">
+        Gönder ↑
+      </button>
+
+    </form>
+
+  </section>
+
+
+  <section class="plans">
+
+    <div>
+
+      <b>
+        Basic
+      </b>
+
+      <strong>
+        ₺199
+      </strong>
+
+      <small>
+        5.000 kredi
+      </small>
+
+      <button
+        type="button"
+        onclick="buy('basic')">
+        Basic'e geç
+      </button>
+
+    </div>
+
+
+    <div class="popular">
+
+      <i>
+        ÖNERİLEN
+      </i>
+
+      <b>
+        Pro
+      </b>
+
+      <strong>
+        ₺399
+      </strong>
+
+      <small>
+        15.000 kredi
+      </small>
+
+      <button
+        type="button"
+        onclick="buy('pro')">
+        Pro'ya geç
+      </button>
+
+    </div>
+
+
+    <div>
+
+      <b>
+        Business
+      </b>
+
+      <strong>
+        ₺799
+      </strong>
+
+      <small>
+        30.000 kredi
+      </small>
+
+      <button
+        type="button"
+        onclick="buy('business')">
+        Business'a geç
+      </button>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script>
+
+const $ = (id) =>
+  document.getElementById(id);
+
+
+/* =========================
+   LOAD USER
+========================= */
+
+async function load(){
+
+  try{
+
+    const response =
+      await fetch('/api/me');
+
+    if(!response.ok){
+
+      window.location.href =
+        '/login.html';
+
+      return;
+    }
+
+    const data =
+      await response.json();
+
+    $('user').textContent =
+      data.user.name;
+
+    $('credits').textContent =
+      data.user.credits;
+
+  }catch(error){
+
+    window.location.href =
+      '/login.html';
+
+  }
+
+}
+
+
+/* =========================
+   CHAT
+========================= */
+
+$('chat').addEventListener(
+  'submit',
+  async (event) => {
+
+    event.preventDefault();
+
+    const input =
+      $('message');
+
+    const text =
+      input.value.trim();
+
+    if(!text) return;
+
+
+    /*
+      User message
+    */
+
+    const userMessage =
+      document.createElement('div');
+
+    userMessage.className =
+      'msg user';
+
+    userMessage.textContent =
+      text;
+
+    $('messages').appendChild(
+      userMessage
+    );
+
+
+    input.value = '';
+
+    input.focus();
+
+
+    /*
+      AI loading message
+    */
+
+    const aiMessage =
+      document.createElement('div');
+
+    aiMessage.className =
+      'msg ai';
+
+    aiMessage.textContent =
+      'STAR AI düşünüyor…';
+
+    $('messages').appendChild(
+      aiMessage
+    );
+
+
+    scrollMessages();
+
+
+    try{
+
+      const response =
+        await fetch(
+          '/api/chat',
+          {
+            method:'POST',
+
+            headers:{
+              'Content-Type':
+                'application/json'
+            },
+
+            body:JSON.stringify({
+              message:text
+            })
+          }
+        );
+
+
+      const data =
+        await response.json()
+          .catch(() => ({}));
+
+
+      if(!response.ok){
+
+        aiMessage.textContent =
+          data.error ||
+          'Bir hata oluştu.';
+
+        return;
+      }
+
+
+      aiMessage.textContent =
+        data.answer ||
+        'Yanıt alınamadı.';
+
+
+      if(
+        data.credits !== undefined
+      ){
+
+        $('credits').textContent =
+          data.credits;
+
+      }
+
+    }catch(error){
+
+      aiMessage.textContent =
+        'Bağlantı hatası. Lütfen tekrar deneyin.';
+
+    }
+
+
+    scrollMessages();
+
+  }
+);
+
+
+/* =========================
+   SCROLL
+========================= */
+
+function scrollMessages(){
+
+  const box =
+    $('messages');
+
+  box.scrollTop =
+    box.scrollHeight;
+
+}
+
+
+/* =========================
+   LOGOUT
+========================= */
+
+$('logout').addEventListener(
+  'click',
+  async () => {
+
+    try{
+
+      await fetch(
+        '/api/auth/logout',
+        {
+          method:'POST'
+        }
+      );
+
+    }finally{
+
+      window.location.href =
+        '/';
+
+    }
+
+  }
+);
+
+
+/* =========================
+   PAYMENT
+========================= */
+
+async function buy(plan){
+
+  try{
+
+    const response =
+      await fetch(
+        '/api/billing/checkout',
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            plan:plan
+          })
+        }
+      );
+
+
+    const data =
+      await response.json()
+        .catch(() => ({}));
+
+
+    if(!response.ok){
+
+      alert(
+        data.error ||
+        'Ödeme başlatılamadı.'
+      );
+
+      return;
+    }
+
+
+    if(data.paymentPageUrl){
+
+      window.location.href =
+        data.paymentPageUrl;
+
+      return;
+    }
+
+
+    if(data.checkoutFormContent){
+
+      const paymentWindow =
+        window.open(
+          '',
+          '_blank'
+        );
+
+      if(!paymentWindow){
+
+        alert(
+          'Ödeme penceresi engellendi. Lütfen açılır pencerelere izin verin.'
+        );
+
+        return;
+      }
+
+
+      paymentWindow.document.open();
+
+      paymentWindow.document.write(
+        data.checkoutFormContent
+      );
+
+      paymentWindow.document.close();
+
+    }
+
+  }catch(error){
+
+    alert(
+      'Ödeme servisine bağlanılamadı.'
+    );
+
+  }
+
+}
+
+
+/* =========================
+   START
+========================= */
+
 load();
-</script></body></html>
+
+</script>
+
+</body>
+</html>
