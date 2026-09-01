@@ -1,6 +1,308 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STAR AI — Giriş</title><link rel="stylesheet" href="/styles.css"></head><body><main class="auth"><a class="brand" href="/">✦ STAR AI</a><div class="auth-card"><h1>STAR AI'a Hoş Geldin</h1><p>Hesabını oluştur veya giriş yap.</p><div class="tabs"><button id="loginTab">Giriş Yap</button><button id="registerTab">Kayıt Ol</button></div><form id="form"><input id="name" placeholder="Ad Soyad" style="display:none"><input id="email" type="email" placeholder="E-posta" required><input id="password" type="password" placeholder="Şifre (en az 8 karakter)" required><button class="btn big">Devam Et →</button><div id="err"></div></form></div></main><script>
-let mode='login'; const f=document.querySelector('#form'), nameEl=document.querySelector('#name'), err=document.querySelector('#err');
-function setMode(m){mode=m;nameEl.style.display=m==='register'?'block':'none';document.querySelector('#loginTab').classList.toggle('on',m==='login');document.querySelector('#registerTab').classList.toggle('on',m==='register')}
-document.querySelector('#loginTab').onclick=()=>setMode('login');document.querySelector('#registerTab').onclick=()=>setMode('register');
-f.onsubmit=async e=>{e.preventDefault();err.textContent='';const body={email:email.value,password:password.value};if(mode==='register')body.name=nameEl.value;const r=await fetch('/api/auth/'+(mode==='login'?'login':'register'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){err.textContent=d.error;return}location.href='/dashboard.html'};
-</script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05050b">
+  <title>STAR AI — Giriş</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="auth-page">
+
+<main class="auth-shell">
+
+  <section class="auth-visual">
+
+    <div class="auth-orb"></div>
+
+    <div class="auth-copy">
+
+      <div class="auth-logo">
+        ✦ STAR <span>AI</span>
+      </div>
+
+      <div class="eyebrow">
+        NEXT GENERATION AI
+      </div>
+
+      <h2>
+        Fikrini<br>
+        <span>güce dönüştür.</span>
+      </h2>
+
+      <p>
+        Yarat, geliştir ve üret.
+        STAR AI ile yapay zekânın gücünü
+        tek bir premium çalışma alanında keşfet.
+      </p>
+
+      <div class="auth-points">
+        <span>Hızlı AI</span>
+        <span>Türkçe destek</span>
+        <span>Güvenli hesap</span>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <section class="auth-panel">
+
+    <div class="auth-card">
+
+      <h1>
+        Hoş Geldin.
+      </h1>
+
+      <p>
+        STAR AI deneyimine devam etmek
+        için hesabına giriş yap.
+      </p>
+
+
+      <div class="tabs">
+
+        <button
+          type="button"
+          id="loginTab"
+          class="on">
+          Giriş Yap
+        </button>
+
+        <button
+          type="button"
+          id="registerTab">
+          Kayıt Ol
+        </button>
+
+      </div>
+
+
+      <form id="form">
+
+        <div
+          class="field"
+          id="nameField"
+          style="display:none">
+
+          <input
+            id="name"
+            type="text"
+            placeholder="Ad Soyad"
+            autocomplete="name">
+
+        </div>
+
+
+        <div class="field">
+
+          <input
+            id="email"
+            type="email"
+            placeholder="E-posta adresin"
+            autocomplete="email"
+            required>
+
+        </div>
+
+
+        <div class="field">
+
+          <input
+            id="password"
+            type="password"
+            placeholder="Şifre (en az 8 karakter)"
+            autocomplete="current-password"
+            required>
+
+          <button
+            class="password-toggle"
+            id="togglePassword"
+            type="button"
+            aria-label="Şifreyi göster">
+            ◉
+          </button>
+
+        </div>
+
+
+        <button
+          class="btn big submit-btn"
+          type="submit">
+
+          <span id="submitText">
+            Giriş Yap →
+          </span>
+
+        </button>
+
+
+        <div id="err"></div>
+
+      </form>
+
+
+      <div class="auth-foot">
+        STAR AI • Güvenli ve modern AI çalışma alanı
+      </div>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<script>
+
+let mode = 'login';
+
+const form = document.getElementById('form');
+const nameField = document.getElementById('nameField');
+const nameInput = document.getElementById('name');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const errorBox = document.getElementById('err');
+const submitText = document.getElementById('submitText');
+const submitButton = document.querySelector('.submit-btn');
+
+const loginTab = document.getElementById('loginTab');
+const registerTab = document.getElementById('registerTab');
+const togglePassword = document.getElementById('togglePassword');
+
+
+function setMode(newMode){
+
+  mode = newMode;
+
+  const registering = mode === 'register';
+
+  nameField.style.display =
+    registering ? 'block' : 'none';
+
+  nameInput.required = registering;
+
+  passwordInput.autocomplete =
+    registering ? 'new-password' : 'current-password';
+
+  loginTab.classList.toggle(
+    'on',
+    mode === 'login'
+  );
+
+  registerTab.classList.toggle(
+    'on',
+    mode === 'register'
+  );
+
+  submitText.textContent =
+    registering
+      ? 'Hesabımı Oluştur →'
+      : 'Giriş Yap →';
+
+  errorBox.textContent = '';
+
+}
+
+
+loginTab.addEventListener(
+  'click',
+  () => setMode('login')
+);
+
+
+registerTab.addEventListener(
+  'click',
+  () => setMode('register')
+);
+
+
+togglePassword.addEventListener(
+  'click',
+  () => {
+
+    const hidden =
+      passwordInput.type === 'password';
+
+    passwordInput.type =
+      hidden ? 'text' : 'password';
+
+    togglePassword.textContent =
+      hidden ? '◉' : '◌';
+
+  }
+);
+
+
+form.addEventListener(
+  'submit',
+  async (event) => {
+
+    event.preventDefault();
+
+    errorBox.textContent = '';
+
+    submitButton.disabled = true;
+
+    const body = {
+      email: emailInput.value.trim(),
+      password: passwordInput.value
+    };
+
+    if(mode === 'register'){
+      body.name = nameInput.value.trim();
+    }
+
+    try{
+
+      const response = await fetch(
+        '/api/auth/' +
+        (mode === 'login'
+          ? 'login'
+          : 'register'),
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json'
+          },
+          body:JSON.stringify(body)
+        }
+      );
+
+      const data =
+        await response.json().catch(
+          () => ({})
+        );
+
+      if(!response.ok){
+
+        errorBox.textContent =
+          data.error ||
+          'Bir hata oluştu.';
+
+        return;
+      }
+
+      window.location.href =
+        '/dashboard.html';
+
+    }catch(error){
+
+      errorBox.textContent =
+        'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.';
+
+    }finally{
+
+      submitButton.disabled = false;
+
+    }
+
+  }
+);
+
+</script>
+
+</body>
+</html>
