@@ -4,17 +4,14 @@ const serverFile = new URL('./server.js', import.meta.url);
 const dashboardFile = new URL('./dashboard.html', import.meta.url);
 
 let server = fs.readFileSync(serverFile, 'utf8');
-
-// The normal chat can accept an image for vision. Keep the payload large enough for
-// a compressed data URL, while the edit endpoint applies its own strict validation.
 server = server.replace("app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));", "app.use(express.json({ limit: '8mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));");
 
 if (!server.includes("app.post('/api/image-edit'")) {
   const imageEditRoute = String.raw`
 
-// Image editing: the OpenAI API key stays server-side. The browser sends only a
-// compressed data URL and an editing instruction. Five credits are reserved per edit.
-app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => \`user:\${req.user_id}\` }), async (req, res) => {
+// Image editing: the OpenAI API key stays server-side. Five credits are reserved per edit.
+app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => 'user:' + req.user_id }), async (req, res) => {
+  if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });
   if (!openai) return res.status(503).json({ error: 'AI image service is not configured.' });
 
   const prompt = String(req.body?.prompt || '').trim().slice(0, 12000);
@@ -37,10 +34,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
         [IMAGE_EDIT_COST, req.user_id]
       );
       if (!updated) throw Object.assign(new Error('INSUFFICIENT_CREDITS'), { status: 402 });
-      await t.none(
-        'INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)',
-        [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']
-      );
+      await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']);
       reserved = true;
     });
 
@@ -89,7 +83,6 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 fs.writeFileSync(serverFile, server);
 
 let dashboard = fs.readFileSync(dashboardFile, 'utf8');
-
 if (!dashboard.includes('image-edit-mode')) {
   dashboard = dashboard.replace(
     '.image-preview-info{min-width:0;flex:1}',
@@ -99,29 +92,15 @@ if (!dashboard.includes('image-edit-mode')) {
     '<div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small>STAR AI bu görseli analiz edebilir.</small></div>',
     '<div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small id="previewHint">Mod: تعديل الصورة • 5 kredi</small><div class="image-edit-mode"><button id="editMode" class="image-mode-btn active" type="button">✦ تعديل</button><button id="analyzeMode" class="image-mode-btn" type="button">◉ تحليل</button></div></div>'
   );
-  dashboard = dashboard.replace(
-    "let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';",
-    "let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';let imageMode='edit';"
-  );
-  dashboard = dashboard.replace(
-    "function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');}",
-    "function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');updateImageMode();}function updateImageMode(){const edit=imageMode==='edit';$('editMode').classList.toggle('active',edit);$('analyzeMode').classList.toggle('active',!edit);$('previewHint').textContent=edit?'Mod: تعديل الصورة • 5 kredi':'Mod: تحليل الصورة • 1 kredi';}"
-  );
-  dashboard = dashboard.replace(
-    "$('attachButton').addEventListener('click',()=>$('imageInput').click());",
-    "$('editMode').addEventListener('click',()=>{imageMode='edit';updateImageMode();});$('analyzeMode').addEventListener('click',()=>{imageMode='analyze';updateImageMode();});$('attachButton').addEventListener('click',()=>$('imageInput').click());"
-  );
+  dashboard = dashboard.replace("let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';", "let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';let imageMode='edit';");
+  dashboard = dashboard.replace("function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');}", "function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');updateImageMode();}function updateImageMode(){const edit=imageMode==='edit';$('editMode').classList.toggle('active',edit);$('analyzeMode').classList.toggle('active',!edit);$('previewHint').textContent=edit?'Mod: تعديل الصورة • 5 kredi':'Mod: تحليل الصورة • 1 kredi';}");
+  dashboard = dashboard.replace("$('attachButton').addEventListener('click',()=>$('imageInput').click());", "$('editMode').addEventListener('click',()=>{imageMode='edit';updateImageMode();});$('analyzeMode').addEventListener('click',()=>{imageMode='analyze';updateImageMode();});$('attachButton').addEventListener('click',()=>$('imageInput').click());");
   dashboard = dashboard.replace(
     "const body={message:text||'Bu görseli analiz et.'};if(conversationId)body.conversation_id=conversationId;if(imageToSend)body.image_data=imageToSend;const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';",
     "let response;let data;const endpoint=imageToSend&&imageMode==='edit'?'/api/image-edit':'/api/chat';if(endpoint==='/api/image-edit'){response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imageToSend,prompt:text})});data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Görsel düzenlenemedi.';return;}aiMessage.replaceChildren();const result=document.createElement('img');result.className='message-image';result.src=data.image;result.alt='Düzenlenmiş görsel';aiMessage.appendChild(result);if(data.credits!==undefined)setCredits(data.credits);}else{const body={message:text||'Bu görseli analiz et.'};if(conversationId)body.conversation_id=conversationId;if(imageToSend)body.image_data=imageToSend;response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';}"
   );
-  dashboard = dashboard.replace(
-    "const wasNew=!conversationId;conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)setCredits(data.credits);if(wasNew)await loadConversations();else renderConversations();",
-    "const wasNew=!conversationId;if(data.conversation_id)conversationId=data.conversation_id;if(data.credits!==undefined)setCredits(data.credits);if(endpoint==='/api/chat'&&(wasNew||data.conversation_id))await loadConversations();else renderConversations();"
-  );
+  dashboard = dashboard.replace("const wasNew=!conversationId;conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)setCredits(data.credits);if(wasNew)await loadConversations();else renderConversations();", "const wasNew=!conversationId;if(data.conversation_id)conversationId=data.conversation_id;if(data.credits!==undefined)setCredits(data.credits);if(endpoint==='/api/chat'&&(wasNew||data.conversation_id))await loadConversations();else renderConversations();");
 }
-
 fs.writeFileSync(dashboardFile, dashboard);
 console.log('STAR AI image editing enabled.');
-
 await import('./server.js');
