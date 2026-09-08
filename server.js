@@ -56,42 +56,43 @@ function parseTrustProxy(value) {
 }
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
-const rateBuckets = new Map();
-const RATE_BUCKET_LIMIT = 10000;
-function clientKey(req) {
-  return String(req.ip || req.socket?.remoteAddress || 'unknown');
-}
-function rateLimit({ windowMs, max, scope, getKey = clientKey }) {
-  return (req, res, next) => {
-    const identifier = String(getKey(req) || 'unknown').slice(0, 200);
-    const bucketKey = `${scope}:${identifier}`;
-    const now = Date.now();
-    let bucket = rateBuckets.get(bucketKey);
-    if (!bucket || bucket.resetAt <= now) bucket = { count: 0, resetAt: now + windowMs };
-    bucket.count += 1;
-    rateBuckets.set(bucketKey, bucket);
-    if (rateBuckets.size > RATE_BUCKET_LIMIT) {
-      let removed = 0;
-      for (const [key, item] of rateBuckets) {
-        if (item.resetAt <= now) { rateBuckets.delete(key); removed += 1; }
-        if (removed >= Math.floor(RATE_BUCKET_LIMIT / 10)) break;
-      }
-      if (rateBuckets.size > RATE_BUCKET_LIMIT) {
-        const oldest = rateBuckets.keys().next().value;
-        if (oldest) rateBuckets.delete(oldest);
-      }
-    }
-    if (bucket.count > max) {
-      res.setHeader('Retry-After', Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)));
+const RATE_LIMIT_MAX_KEY_LENGTH = 200;
+async function enforceRateLimit(req, res, next, { windowMs, max, scope, getKey = clientKey }) {
+  const identifier = String(getKey(req) || 'unknown').slice(0, RATE_LIMIT_MAX_KEY_LENGTH);
+  const now = Date.now();
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  try {
+    const result = await db.one(`
+      INSERT INTO rate_limits(scope,bucket_key,window_started,count)
+      VALUES($1,$2,$3,1)
+      ON CONFLICT(scope,bucket_key) DO UPDATE
+      SET window_started=CASE WHEN rate_limits.window_started=$3 THEN rate_limits.window_started ELSE $3 END,
+          count=CASE WHEN rate_limits.window_started=$3 THEN rate_limits.count+1 ELSE 1 END
+      RETURNING count
+    `, [scope, identifier, windowStart]);
+    if (Number(result.count) > max) {
+      const retryAfter = Math.max(1, Math.ceil(((windowStart + windowMs) - now) / 1000));
+      res.setHeader('Retry-After', retryAfter);
       return res.status(429).json({ error: 'Çok fazla istek gönderildi. Lütfen biraz sonra tekrar deneyin.' });
     }
     next();
-  };
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    return res.status(503).json({ error: 'İstek sınırı servisi geçici olarak kullanılamıyor.' });
+  }
+}
+function clientKey(req) {
+  return String(req.ip || req.socket?.remoteAddress || 'unknown');
+}
+function rateLimit(options) {
+  return (req, res, next) => enforceRateLimit(req, res, next, options);
 }
 setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of rateBuckets) if (bucket.resetAt <= now) rateBuckets.delete(key);
-}, 60000).unref();
+  const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+  db.none('DELETE FROM rate_limits WHERE window_started < $1', [cutoff]).catch(error => {
+    console.error('Rate limit cleanup error:', error);
+  });
+}, 15 * 60 * 1000).unref();
 
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a));
@@ -162,6 +163,10 @@ async function initializeDatabase() {
       plan TEXT NOT NULL, amount NUMERIC(12,2) NOT NULL, currency TEXT NOT NULL DEFAULT 'TRY',
       status TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      scope TEXT NOT NULL, bucket_key TEXT NOT NULL, window_started BIGINT NOT NULL, count INTEGER NOT NULL,
+      PRIMARY KEY (scope, bucket_key)
+    );
     CREATE TABLE IF NOT EXISTS conversations (
       id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), title TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -180,6 +185,7 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
     CREATE INDEX IF NOT EXISTS idx_payment_transactions_user_id ON payment_transactions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_rate_limits_window_started ON rate_limits(window_started);
   `);
 }
 async function createAdminIfNotExists() {
