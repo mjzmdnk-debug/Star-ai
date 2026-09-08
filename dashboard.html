@@ -3,231 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#05050b">
+<meta name="theme-color" content="#07060d">
 <title>STAR AI — Panel</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
-/* STAR AI CHAT — premium, spacious and mobile-first */
-.dashboard-page .dashboard{
-  width:min(1180px,94%);
-}
-.dashboard-page .dash-head{
-  margin-bottom:24px;
-}
-.dashboard-page .dash-head h1{
-  font-size:clamp(42px,6vw,68px);
-  line-height:1;
-  letter-spacing:-.055em;
-}
-.dashboard-page .dash-head p{
-  font-size:16px;
-}
-.dashboard-page .chat{
-  width:100%;
-  min-height:720px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  border:1px solid rgba(168,85,247,.34);
-  border-radius:28px;
-  background:
-    radial-gradient(700px 260px at 50% 0%,rgba(124,60,255,.10),transparent 70%),
-    rgba(9,8,18,.94);
-  box-shadow:0 35px 100px rgba(0,0,0,.42),0 0 70px rgba(124,60,255,.08);
-}
-.dashboard-page .chat-top{
-  min-height:82px;
-  padding:20px 26px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  background:rgba(255,255,255,.018);
-}
-.dashboard-page .chat-top b{
-  display:block;
-  font-size:19px;
-  letter-spacing:-.02em;
-}
-.dashboard-page .chat-top small{
-  display:block;
-  margin-top:5px;
-  color:#817c90;
-  font-size:12px;
-}
-.dashboard-page .status-dot{
-  width:11px;
-  height:11px;
-  flex:0 0 auto;
-  border-radius:50%;
-  background:#54e5a0;
-  box-shadow:0 0 20px rgba(84,229,160,.75);
-}
-.dashboard-page #messages{
-  flex:1;
-  min-height:0;
-  height:570px;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scroll-behavior:smooth;
-  padding:30px clamp(18px,4vw,42px) 34px;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(168,85,247,.45) transparent;
-}
-.dashboard-page #messages::-webkit-scrollbar{width:7px}
-.dashboard-page #messages::-webkit-scrollbar-track{background:transparent}
-.dashboard-page #messages::-webkit-scrollbar-thumb{background:rgba(168,85,247,.42);border-radius:99px}
-.dashboard-page .msg{
-  width:fit-content;
-  max-width:min(82%,760px);
-  margin:0 0 18px;
-  padding:16px 19px;
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:20px;
-  font-size:17px;
-  line-height:1.65;
-  letter-spacing:-.01em;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  animation:starMessageIn .22s ease-out;
-}
-.dashboard-page .msg.ai{
-  margin-right:auto;
-  background:rgba(255,255,255,.035);
-  border-top-left-radius:8px;
-  color:#f4f2fa;
-}
-.dashboard-page .msg.user{
-  margin-left:auto;
-  background:linear-gradient(135deg,#7130f5,#5424ba);
-  border-color:rgba(183,135,255,.35);
-  border-top-right-radius:8px;
-  box-shadow:0 12px 35px rgba(82,36,186,.24);
-}
-@keyframes starMessageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-.dashboard-page .typing{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  min-width:72px;
-}
-.dashboard-page .typing span{
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:#a96cff;
-  animation:starTyping 1.1s infinite ease-in-out;
-}
-.dashboard-page .typing span:nth-child(2){animation-delay:.15s}
-.dashboard-page .typing span:nth-child(3){animation-delay:.3s}
-@keyframes starTyping{0%,60%,100%{opacity:.28;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
-.dashboard-page #chat{
-  display:flex;
-  align-items:flex-end;
-  gap:12px;
-  padding:15px 18px calc(18px + env(safe-area-inset-bottom));
-  border-top:1px solid rgba(255,255,255,.08);
-  background:rgba(8,7,16,.96);
-}
-.dashboard-page #message{
-  flex:1;
-  width:100%;
-  min-height:58px;
-  max-height:180px;
-  resize:none;
-  padding:16px 18px;
-  border:1px solid rgba(255,255,255,.11);
-  border-radius:19px;
-  outline:none;
-  color:#fff;
-  background:rgba(255,255,255,.045);
-  font-size:17px;
-  line-height:1.5;
-  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease;
-}
-.dashboard-page #message::placeholder{color:#716c7d}
-.dashboard-page #message:focus{
-  border-color:rgba(168,85,247,.65);
-  background:rgba(255,255,255,.055);
-  box-shadow:0 0 0 4px rgba(124,60,255,.10),0 0 35px rgba(124,60,255,.08);
-}
-.dashboard-page #sendButton{
-  min-width:126px;
-  min-height:58px;
-  border-radius:18px;
-  font-size:15px;
-  flex:0 0 auto;
-}
-.dashboard-page #sendButton:disabled{opacity:.55;cursor:not-allowed;transform:none}
-.dashboard-page .composer-hint{
-  margin:-7px 20px 10px;
-  color:#625e6d;
-  font-size:11px;
-  text-align:right;
-}
-@media (max-width:700px){
-  .dashboard-page .dashboard{width:100%;}
-  .dashboard-page .dash-head{padding:0 16px;}
-  .dashboard-page .dash-head h1{font-size:44px;}
-  .dashboard-page .chat{
-    min-height:calc(100vh - 190px);
-    border-radius:24px 24px 0 0;
-    border-left:0;
-    border-right:0;
-  }
-  .dashboard-page .chat-top{padding:17px 18px;min-height:74px;}
-  .dashboard-page .chat-top b{font-size:17px}
-  .dashboard-page #messages{
-    height:calc(100vh - 350px);
-    min-height:420px;
-    padding:24px 14px 22px;
-  }
-  .dashboard-page .msg{
-    max-width:91%;
-    padding:14px 16px;
-    margin-bottom:15px;
-    font-size:17px;
-    line-height:1.58;
-    border-radius:18px;
-  }
-  .dashboard-page #chat{gap:8px;padding:10px 10px calc(12px + env(safe-area-inset-bottom));}
-  .dashboard-page #message{min-height:54px;font-size:17px;padding:14px 15px;border-radius:17px;}
-  .dashboard-page #sendButton{min-width:58px;width:58px;min-height:54px;padding:0;border-radius:17px;font-size:0;}
-  .dashboard-page #sendButton::after{content:'↑';font-size:23px;font-weight:800;}
-  .dashboard-page .composer-hint{display:none}
+/* =============================
+   STAR AI — FULL CHAT EXPERIENCE
+   ============================= */
+.dashboard-page{overflow:hidden;height:100vh;height:100dvh}
+.dashboard-page .dash-nav{height:64px;min-height:64px;padding:0 22px;background:rgba(5,5,11,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.08)}
+.dashboard-page .dash-user{display:flex;align-items:center;gap:12px}
+.dashboard-page .dash-user #user{font-size:13px;color:#c7c3d0;font-weight:600}
+.dashboard-page .logout{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#c5c0cf;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:700}
+.dashboard-page .logout:hover{background:rgba(255,255,255,.07);color:#fff}
+.dashboard-shell{height:calc(100vh - 64px);height:calc(100dvh - 64px);display:grid;grid-template-columns:280px minmax(0,1fr);min-height:0}
+.chat-sidebar{position:relative;display:flex;flex-direction:column;min-height:0;padding:18px 14px;border-right:1px solid rgba(255,255,255,.08);background:rgba(8,7,15,.82)}
+.new-chat{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:48px;border:1px solid rgba(168,85,247,.38);border-radius:14px;color:#fff;background:linear-gradient(135deg,rgba(109,48,244,.95),rgba(173,72,255,.9));box-shadow:0 12px 32px rgba(124,60,255,.22);font-size:14px;font-weight:800}
+.new-chat:hover{transform:translateY(-1px);box-shadow:0 16px 42px rgba(124,60,255,.3)}
+.sidebar-label{margin:25px 10px 10px;color:#686375;font-size:10px;font-weight:800;letter-spacing:.15em}
+.conversation-list{flex:1;min-height:0;overflow-y:auto;padding-right:2px;scrollbar-width:thin;scrollbar-color:rgba(168,85,247,.35) transparent}
+.conversation-list::-webkit-scrollbar{width:5px}.conversation-list::-webkit-scrollbar-thumb{background:rgba(168,85,247,.35);border-radius:99px}
+.conversation-item{position:relative;display:flex;align-items:center;width:100%;min-height:48px;margin:3px 0;padding:8px 9px;border:1px solid transparent;border-radius:12px;background:transparent;color:#aaa5b6;text-align:left;cursor:pointer}
+.conversation-item:hover{background:rgba(255,255,255,.045);color:#fff}
+.conversation-item.active{background:rgba(124,60,255,.13);border-color:rgba(168,85,247,.22);color:#fff}
+.conversation-title{display:block;min-width:0;padding-right:28px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600}
+.delete-conversation{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:0;border-radius:8px;background:transparent;color:#6e687b;font-size:14px;opacity:0;cursor:pointer}
+.conversation-item:hover .delete-conversation,.conversation-item.active .delete-conversation{opacity:1}
+.delete-conversation:hover{background:rgba(251,113,133,.1);color:#fb7185}
+.sidebar-bottom{padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+.credit-mini{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:13px;background:rgba(255,255,255,.03)}
+.credit-mini small{display:block;color:#777184;font-size:10px}.credit-mini b{font-size:18px}.credit-mini span{color:#a96cff;font-size:11px}
+.chat-main{min-width:0;min-height:0;display:flex;flex-direction:column;background:radial-gradient(900px 500px at 55% 0%,rgba(124,60,255,.09),transparent 68%),#07060e}
+.chat-main-head{height:74px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 30px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(7,6,14,.58);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.chat-title-wrap{display:flex;align-items:center;gap:12px;min-width:0}.assistant-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;color:#fff;background:linear-gradient(135deg,#7131f5,#b34dff);box-shadow:0 0 25px rgba(124,60,255,.3);font-size:18px}.chat-title b{display:block;font-size:15px}.chat-title small{display:block;margin-top:2px;color:#747080;font-size:10px}.online-dot{display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;background:#54e5a0;box-shadow:0 0 10px rgba(84,229,160,.7)}
+.chat-actions{display:flex;gap:7px}.chat-action{width:38px;height:38px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.025);color:#918b9e;cursor:pointer}.chat-action:hover{color:#fff;background:rgba(255,255,255,.06)}
+.dashboard-page #messages{flex:1;min-height:0;height:auto;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;padding:34px clamp(18px,7vw,100px) 42px;scrollbar-width:thin;scrollbar-color:rgba(168,85,247,.4) transparent}
+.dashboard-page #messages::-webkit-scrollbar{width:7px}.dashboard-page #messages::-webkit-scrollbar-track{background:transparent}.dashboard-page #messages::-webkit-scrollbar-thumb{background:rgba(168,85,247,.4);border-radius:99px}
+.messages-inner{width:min(920px,100%);margin:0 auto}
+.dashboard-page .msg{width:fit-content;max-width:min(80%,820px);margin:0 0 22px;padding:16px 20px;border:1px solid rgba(255,255,255,.09);border-radius:20px;font-size:18px;line-height:1.68;letter-spacing:-.012em;white-space:pre-wrap;overflow-wrap:anywhere;animation:starIn .2s ease-out}
+.dashboard-page .msg.ai{margin-right:auto;background:rgba(255,255,255,.035);border-top-left-radius:7px;color:#f5f3fa}.dashboard-page .msg.user{margin-left:auto;background:linear-gradient(135deg,#7130f5,#5424ba);border-color:rgba(183,135,255,.35);border-top-right-radius:7px;box-shadow:0 12px 35px rgba(82,36,186,.2)}
+@keyframes starIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.welcome{max-width:720px;margin:8vh auto 5vh;text-align:center}.welcome .welcome-icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:linear-gradient(135deg,#7131f5,#b34dff);box-shadow:0 0 45px rgba(124,60,255,.25);font-size:30px}.welcome h1{margin:0 0 9px;font-size:clamp(30px,4vw,46px);letter-spacing:-.045em}.welcome p{margin:0;color:#817b8d;font-size:15px}
+.composer-wrap{flex:0 0 auto;padding:14px clamp(12px,5vw,70px) 10px;background:linear-gradient(transparent,rgba(7,6,14,.98) 20%)}
+.dashboard-page #chat{width:min(920px,100%);margin:0 auto;display:flex;align-items:flex-end;gap:9px;padding:7px;border:1px solid rgba(255,255,255,.12);border-radius:21px;background:rgba(18,16,29,.96);box-shadow:0 18px 55px rgba(0,0,0,.34),0 0 35px rgba(124,60,255,.06)}
+.dashboard-page #message{flex:1;width:100%;min-height:54px;max-height:190px;resize:none;padding:15px 15px 14px;border:0;outline:none;color:#fff;background:transparent;font-size:18px;line-height:1.5;overflow-y:auto}
+.dashboard-page #message::placeholder{color:#6f6979}.dashboard-page #message:focus{box-shadow:none}
+.attach-button{width:46px;height:46px;flex:0 0 auto;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.025);color:#777181;font-size:19px;cursor:not-allowed}.attach-button:hover{background:rgba(255,255,255,.04)}
+.dashboard-page #sendButton{width:52px;min-width:52px;height:52px;min-height:52px;padding:0;border:0;border-radius:16px;font-size:0;flex:0 0 auto}.dashboard-page #sendButton::after{content:'↑';font-size:24px;font-weight:800}.dashboard-page #sendButton:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.composer-note{width:min(920px,100%);margin:7px auto 0;text-align:center;color:#555160;font-size:10px}.composer-note span{color:#706a7a}
+.mobile-menu{display:none}
+.mobile-overlay{display:none}
+.typing{display:inline-flex;align-items:center;gap:5px;min-width:65px}.typing span{width:7px;height:7px;border-radius:50%;background:#a96cff;animation:typing 1.1s infinite ease-in-out}.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}@keyframes typing{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-4px)}}
+@media(max-width:850px){
+  .dashboard-page .dash-nav{padding:0 14px}.dashboard-page .dash-user #user{display:none}.dashboard-shell{grid-template-columns:1fr}.chat-sidebar{position:fixed;z-index:80;top:64px;bottom:0;left:0;width:285px;transform:translateX(-105%);transition:transform .25s ease;box-shadow:25px 0 70px rgba(0,0,0,.4)}.chat-sidebar.open{transform:none}.mobile-menu{display:grid;place-items:center;width:38px;height:38px;margin-right:8px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.03);color:#fff;font-size:20px}.chat-main-head{padding:0 14px}.chat-actions{display:none}.mobile-overlay{position:fixed;z-index:70;inset:64px 0 0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px)}.mobile-overlay.open{display:block}.chat-title-wrap{gap:9px}.assistant-avatar{width:35px;height:35px}.chat-title b{font-size:14px}
+  .dashboard-page #messages{padding:24px 14px 28px}.messages-inner{width:100%}.dashboard-page .msg{max-width:90%;font-size:17px;line-height:1.6;padding:14px 16px;margin-bottom:17px}.welcome{margin:7vh auto 4vh;padding:0 15px}.welcome h1{font-size:32px}.welcome p{font-size:14px}.composer-wrap{padding:9px 9px 9px}.dashboard-page #chat{border-radius:18px;padding:6px;gap:5px}.dashboard-page #message{font-size:17px;min-height:50px;padding:13px 11px}.attach-button{width:42px;height:46px}.dashboard-page #sendButton{width:48px;min-width:48px;height:48px;min-height:48px;border-radius:14px}.composer-note{display:none}
 }
 </style>
 </head>
 <body class="dashboard-page">
-<header class="dash-nav"><a class="brand" href="/">✦ STAR <b>AI</b></a><div class="dash-user"><span id="user">Yükleniyor…</span><button id="logout" class="logout" type="button">Çıkış</button></div></header>
-<main class="dashboard">
-  <div class="dash-head">
-    <div><span class="eyebrow">KONTROL PANELİ</span><h1>Merhaba! 👋</h1><p>Bugün ne üretmek istersin?</p></div>
-    <div class="credits"><small>Kalan kredi</small><b id="credits">—</b></div>
-  </div>
-  <section class="chat">
-    <div class="chat-top"><div><b>✦ STAR AI Assistant</b><small>Çevrimiçi • Hızlı yanıt</small></div><span class="status-dot"></span></div>
-    <div id="messages"><div class="msg ai">Merhaba! Ben STAR AI. Nasıl yardımcı olabilirim?</div></div>
-    <form id="chat">
-      <textarea id="message" autocomplete="off" maxlength="12000" rows="1" placeholder="Mesajınızı yazın…" required></textarea>
-      <button id="sendButton" class="btn" type="submit">Gönder ↑</button>
-    </form>
-    <div class="composer-hint">Enter gönderir • Shift + Enter yeni satır</div>
-  </section>
-  <section class="plans"><div><b>Basic</b><strong>₺199</strong><small>5.000 kredi</small><button type="button" onclick="buy('basic')">Basic'e geç</button></div><div class="popular"><i>ÖNERİLEN</i><b>Pro</b><strong>₺399</strong><small>15.000 kredi</small><button type="button" onclick="buy('pro')">Pro'ya geç</button></div><div><b>Business</b><strong>Yakında</strong><small>30.000 kredi</small><button id="businessButton" type="button" disabled>Yakında Kullanılabilir</button></div></section>
-</main>
+<header class="dash-nav">
+  <div style="display:flex;align-items:center"><button id="mobileMenu" class="mobile-menu" type="button" aria-label="Menü">☰</button><a class="brand" href="/">✦ STAR <b>AI</b></a></div>
+  <div class="dash-user"><span id="user">Yükleniyor…</span><span class="credits-pill">✦ <b id="credits">—</b></span><button id="logout" class="logout" type="button">Çıkış</button></div>
+</header>
+<div class="dashboard-shell">
+  <aside id="sidebar" class="chat-sidebar">
+    <button id="newChat" class="new-chat" type="button"><span>＋</span> Yeni sohbet</button>
+    <div class="sidebar-label">SOHBETLER</div>
+    <div id="conversationList" class="conversation-list"></div>
+    <div class="sidebar-bottom"><div class="credit-mini"><div><small>Kalan kredi</small><b id="creditsSide">—</b></div><span>STAR AI</span></div></div>
+  </aside>
+  <div id="overlay" class="mobile-overlay"></div>
+  <main class="chat-main">
+    <div class="chat-main-head">
+      <div class="chat-title-wrap"><div class="assistant-avatar">✦</div><div class="chat-title"><b>STAR AI Assistant</b><small><span class="online-dot"></span>Çevrimiçi • Hızlı yanıt</small></div></div>
+      <div class="chat-actions"><button id="exportChat" class="chat-action" type="button" title="Sohbeti dışa aktar">↓</button></div>
+    </div>
+    <div id="messages"><div class="messages-inner" id="messagesInner"><div class="welcome"><div class="welcome-icon">✦</div><h1>Bugün sana nasıl yardımcı olabilirim?</h1><p>Bir soru sor, fikir üret veya birlikte bir şeyler oluşturalım.</p></div></div></div>
+    <div class="composer-wrap">
+      <form id="chat">
+        <button class="attach-button" type="button" disabled title="Dosya ve görsel desteği yakında">＋</button>
+        <textarea id="message" autocomplete="off" maxlength="12000" rows="1" placeholder="STAR AI'a bir mesaj yazın…" required></textarea>
+        <button id="sendButton" class="btn" type="submit" aria-label="Gönder">↑</button>
+      </form>
+      <div class="composer-note">STAR AI hata yapabilir. Önemli bilgileri <span>kontrol edin.</span></div>
+    </div>
+  </main>
+</div>
 <script>
-const $=id=>document.getElementById(id);let conversationId=null;let busy=false;
-async function load(){try{const response=await fetch('/api/me');if(!response.ok){location.href='/login.html';return;}const data=await response.json();$('user').textContent=data.user.name;$('credits').textContent=data.user.credits;await loadConversations();const params=new URLSearchParams(location.search);const plan=params.get('plan');if(plan==='basic'||plan==='pro')setTimeout(()=>buy(plan),150);}catch{location.href='/login.html';}}
-async function loadConversations(){try{const response=await fetch('/api/conversations');if(!response.ok)return;const data=await response.json();if(data.conversations?.length){conversationId=data.conversations[0].id;await loadMessages(conversationId);}}catch{}}
-async function loadMessages(id){try{const response=await fetch('/api/conversations/'+encodeURIComponent(id)+'/messages');if(!response.ok)return;const data=await response.json();$('messages').replaceChildren();for(const msg of data.messages||[]){appendMessage(msg.role,msg.content,false);}scrollMessages();}catch{}}
-function appendMessage(role,content,scroll=true){const el=document.createElement('div');el.className='msg '+(role==='user'?'user':'ai');el.textContent=content;$('messages').appendChild(el);if(scroll)scrollMessages();return el;}
-function showTyping(el){el.innerHTML='';const wrap=document.createElement('span');wrap.className='typing';for(let i=0;i<3;i++)wrap.appendChild(document.createElement('span'));el.appendChild(wrap);}
-function autoResize(){const input=$('message');input.style.height='auto';input.style.height=Math.min(input.scrollHeight,180)+'px';}
+const $=id=>document.getElementById(id);let conversationId=null;let conversations=[];let busy=false;
+async function load(){try{const response=await fetch('/api/me');if(!response.ok){location.href='/login.html';return;}const data=await response.json();setCredits(data.user.credits);$('user').textContent=data.user.name;await loadConversations();const params=new URLSearchParams(location.search);const plan=params.get('plan');if(plan==='basic'||plan==='pro')setTimeout(()=>buy(plan),150);}catch{location.href='/login.html';}}
+function setCredits(value){$('credits').textContent=value;$('creditsSide').textContent=value}
+async function loadConversations(){try{const response=await fetch('/api/conversations');if(!response.ok)return;const data=await response.json();conversations=data.conversations||[];renderConversations();if(conversations.length){await selectConversation(conversations[0].id,false);}else{conversationId=null;showWelcome();}}catch{}}
+function renderConversations(){const list=$('conversationList');list.replaceChildren();for(const conv of conversations){const item=document.createElement('button');item.type='button';item.className='conversation-item'+(String(conv.id)===String(conversationId)?' active':'');item.dataset.id=conv.id;const title=document.createElement('span');title.className='conversation-title';title.textContent=conv.title||'Yeni sohbet';const del=document.createElement('span');del.className='delete-conversation';del.textContent='×';del.title='Sohbeti sil';item.appendChild(title);item.appendChild(del);item.addEventListener('click',event=>{if(event.target===del){event.stopPropagation();deleteConversation(conv.id);return;}selectConversation(conv.id);});list.appendChild(item);}}
+function showWelcome(){$('messagesInner').replaceChildren();const w=document.createElement('div');w.className='welcome';w.innerHTML='<div class="welcome-icon">✦</div><h1>Bugün sana nasıl yardımcı olabilirim?</h1><p>Bir soru sor, fikir üret veya birlikte bir şeyler oluşturalım.</p>';$('messagesInner').appendChild(w);}
+async function selectConversation(id,closeMobile=true){conversationId=id;renderConversations();await loadMessages(id);if(closeMobile)closeSidebar();}
+async function loadMessages(id){try{const response=await fetch('/api/conversations/'+encodeURIComponent(id)+'/messages');if(!response.ok)return;const data=await response.json();$('messagesInner').replaceChildren();for(const msg of data.messages||[])appendMessage(msg.role,msg.content,false);scrollMessages(false);}catch{}}
+function appendMessage(role,content,scroll=true){const el=document.createElement('div');el.className='msg '+(role==='user'?'user':'ai');el.textContent=content;$('messagesInner').appendChild(el);if(scroll)scrollMessages(true);return el;}
+function showTyping(el){el.replaceChildren();const wrap=document.createElement('span');wrap.className='typing';for(let i=0;i<3;i++)wrap.appendChild(document.createElement('span'));el.appendChild(wrap);}
+function autoResize(){const input=$('message');input.style.height='auto';input.style.height=Math.min(input.scrollHeight,190)+'px';}
 $('message').addEventListener('input',autoResize);
 $('message').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('chat').requestSubmit();}});
-$('chat').addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const input=$('message'),text=input.value.trim();if(!text)return;busy=true;$('sendButton').disabled=true;appendMessage('user',text);input.value='';autoResize();const aiMessage=appendMessage('ai','',false);showTyping(aiMessage);scrollMessages();try{const body={message:text};if(conversationId)body.conversation_id=conversationId;const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)$('credits').textContent=data.credits;}catch{aiMessage.textContent='Bağlantı hatası. Lütfen tekrar deneyin.';}finally{busy=false;$('sendButton').disabled=false;input.focus();scrollMessages();}});
-function scrollMessages(){const box=$('messages');requestAnimationFrame(()=>box.scrollTo({top:box.scrollHeight,behavior:'smooth'}));}
+$('chat').addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const input=$('message'),text=input.value.trim();if(!text)return;busy=true;$('sendButton').disabled=true;appendMessage('user',text);input.value='';autoResize();const aiMessage=appendMessage('ai','',false);showTyping(aiMessage);scrollMessages(true);try{const body={message:text};if(conversationId)body.conversation_id=conversationId;const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';const wasNew=!conversationId;conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)setCredits(data.credits);if(wasNew)await loadConversations();else renderConversations();}catch{aiMessage.textContent='Bağlantı hatası. Lütfen tekrar deneyin.';}finally{busy=false;$('sendButton').disabled=false;input.focus();scrollMessages(true);}});
+function scrollMessages(smooth=true){const box=$('messages');requestAnimationFrame(()=>box.scrollTo({top:box.scrollHeight,behavior:smooth?'smooth':'auto'}));}
+$('newChat').addEventListener('click',()=>{conversationId=null;renderConversations();showWelcome();$('message').focus();closeSidebar();});
+async function deleteConversation(id){if(!confirm('Bu sohbet silinsin mi?'))return;try{const response=await fetch('/api/conversations/'+encodeURIComponent(id),{method:'DELETE'});if(!response.ok)return;conversations=conversations.filter(c=>String(c.id)!==String(id));if(String(conversationId)===String(id)){conversationId=conversations[0]?.id||null;if(conversationId)await loadMessages(conversationId);else showWelcome();}renderConversations();}catch{alert('Sohbet silinemedi.');}}
+$('exportChat').addEventListener('click',async()=>{if(!conversationId)return;try{const response=await fetch('/api/conversations/'+encodeURIComponent(conversationId)+'/export');if(!response.ok)return;const data=await response.json().catch(()=>null);if(data?.content){const blob=new Blob([data.content],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='star-ai-chat.txt';a.click();URL.revokeObjectURL(url);}}catch{}});
+$('mobileMenu').addEventListener('click',()=>{$('sidebar').classList.toggle('open');$('overlay').classList.toggle('open');});$('overlay').addEventListener('click',closeSidebar);function closeSidebar(){$('sidebar').classList.remove('open');$('overlay').classList.remove('open');}
 $('logout').addEventListener('click',async()=>{try{await fetch('/api/auth/logout',{method:'POST'});}finally{location.href='/';}});
 async function buy(plan){if(plan!=='basic'&&plan!=='pro')return;try{const response=await fetch('/api/billing/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})});const data=await response.json().catch(()=>({}));if(!response.ok){alert(data.error||'Ödeme başlatılamadı.');return;}if(data.paymentPageUrl)location.href=data.paymentPageUrl;}catch{alert('Ödeme servisine bağlanılamadı.');}}
 load();
