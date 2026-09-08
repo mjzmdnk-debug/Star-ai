@@ -63,4 +63,5 @@ if (!dashboard.includes('data-star-status-indicator="v1"')) {
   console.log('STAR AI live status indicator enabled.');
 }
 
+await import('./ui-design-bootstrap.js');
 await import('./image-support-bootstrap.js');
