@@ -9,7 +9,7 @@ server = server.replace("app.use(express.json({ limit: '1mb', verify: (req, res,
 if (!server.includes("app.post('/api/image-edit'")) {
   const imageEditRoute = String.raw`
 
-// Image editing: the OpenAI API key stays server-side. Five credits are reserved per edit.
+// Image editing through the Responses API. The older /images/edits path is avoided because GPT Image model validation on that endpoint is currently unreliable.
 app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => 'user:' + req.user_id }), async (req, res) => {
   if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });
   if (!openai) return res.status(503).json({ error: 'AI image service is not configured.' });
@@ -24,10 +24,6 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
   if (!allowedHeader || !payload || !/^[A-Za-z0-9+/=]+$/.test(payload)) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
   if (imageData.length > 7000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
 
-  const imageMime = header === 'data:image/png;base64' ? 'image/png' : header === 'data:image/webp;base64' ? 'image/webp' : 'image/jpeg';
-  const imageBuffer = Buffer.from(payload, 'base64');
-  if (!imageBuffer.length || imageBuffer.length > 5000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
-
   const IMAGE_EDIT_COST = 5;
   let reserved = false;
   try {
@@ -41,17 +37,25 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       reserved = true;
     });
 
-    const { toFile } = await import('openai');
-    const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/webp' ? 'webp' : 'jpg';
-    const imageFile = await toFile(imageBuffer, 'star-ai-source.' + ext, { type: imageMime });
-    const edit = await openai.images.edit({
-      model: 'gpt-image-2',
-      image: imageFile,
-      prompt: 'Edit the supplied image according to this instruction: ' + prompt + '. Preserve the person\'s identity, composition, camera perspective, and every detail not explicitly requested to change. Make only the requested changes and keep everything else as close to the original as possible.',
-      quality: 'medium'
+    const response = await openai.responses.create({
+      model: 'gpt-5.6-luna',
+      input: [{
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: 'Edit this image according to the following instruction: ' + prompt + '. Preserve the person\'s identity, composition, camera perspective, and every detail not explicitly requested to change. Make only the requested changes and keep everything else as close to the original as possible.'
+          },
+          { type: 'input_image', image_url: imageData, detail: 'high' }
+        ]
+      }],
+      tools: [{ type: 'image_generation', model: 'gpt-image-2', action: 'edit', quality: 'medium' }]
     });
 
-    const b64 = edit?.data?.[0]?.b64_json;
+    const imageCall = Array.isArray(response?.output)
+      ? response.output.find(item => item?.type === 'image_generation_call' && item?.result)
+      : null;
+    const b64 = imageCall?.result;
     if (!b64) throw new Error('EMPTY_IMAGE_RESULT');
     const resultDataUrl = 'data:image/png;base64,' + b64;
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
@@ -74,7 +78,10 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
     if (message.toLowerCase().includes('content') || message.toLowerCase().includes('safety')) {
       return res.status(400).json({ error: 'Bu görsel veya düzenleme isteği güvenlik kuralları nedeniyle işlenemedi.' });
     }
-    return res.status(500).json({ error: 'Görsel düzenlenemedi. Lütfen tekrar deneyin.' });
+    if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('billing') || message.toLowerCase().includes('credit')) {
+      return res.status(503).json({ error: 'OpenAI görsel servisi için bakiye/kullanım limiti yetersiz.' });
+    }
+    return res.status(502).json({ error: 'OpenAI görsel servisi şu anda yanıt vermedi. Lütfen tekrar deneyin.' });
   }
 });
 `;
@@ -104,5 +111,5 @@ if (!dashboard.includes('image-edit-mode')) {
   dashboard = dashboard.replace("const wasNew=!conversationId;conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)setCredits(data.credits);if(wasNew)await loadConversations();else renderConversations();", "const wasNew=!conversationId;if(data.conversation_id)conversationId=data.conversation_id;if(data.credits!==undefined)setCredits(data.credits);if(endpoint==='/api/chat'&&(wasNew||data.conversation_id))await loadConversations();else renderConversations();");
 }
 fs.writeFileSync(dashboardFile, dashboard);
-console.log('STAR AI image editing enabled.');
+console.log('STAR AI image editing enabled through Responses API.');
 await import('./server.js');
