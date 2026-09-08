@@ -9,7 +9,7 @@ const $=id=>document.getElementById(id); const fmt=n=>new Intl.NumberFormat('tr-
 async function api(url,opt){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Hata');return d}
 async function load(){try{const me=await api('/api/me');if(me.user.role!=='admin'){location.href='/dashboard.html';return;}const d=await api('/api/admin/overview');
 $('cards').replaceChildren(...[
- ['Toplam Kullanıcı',d.stats.users],['Ücretli Kullanıcı',d.stats.paid],['Dolaşımdaki Credits',d.stats.credits],['AI Kullanım Credits',d.stats.usage],['Aylık Plan Değeri*','₺'+fmt(d.stats.revenue)]
+ ['Toplam Kullanıcı',d.stats.users],['Ücretli Kullanıcı',d.stats.paid],['Dolaşımdaki Credits',d.stats.credits],['AI Kullanım Credits',d.stats.usage],['Kaydedilen Ödemeler','₺'+fmt(d.stats.revenue)]
 ].map(([label,value])=>{const el=document.createElement('div'),s=document.createElement('small'),b=document.createElement('b');s.textContent=label;b.textContent=value;el.append(s,b);return el}));
 $('plans').replaceChildren(...(d.byPlan||[]).map(x=>{const el=document.createElement('div'),s=document.createElement('span'),b=document.createElement('b');s.textContent=x.plan;b.textContent=fmt(x.count);el.append(s,b);return el}));await loadUsers();
 }catch(e){alert(e.message);location.href='/';}}
