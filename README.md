@@ -19,7 +19,7 @@ STAR AI هو تطبيق ويب تركيّز نسخته الحالية على ح�
 - Rate limiting مخزن في PostgreSQL، ذري وقابل للعمل عبر أكثر من instance، مع تنظيف تلقائي للسجلات القديمة
 - فحص صحة فعلي لاتصال PostgreSQL عبر `/api/health`
 - حماية CSRF/Origin لطلبات المتصفح التي تعتمد على cookies، مع استثناء webhook لأنه محمي بالسر السري
-- إعداد `trust proxy` صريح عبر `TRUST_PROXY` بدل قيمة ثابتة داخل الكود
+- إعداد `trust proxy` قابل للضبط عبر `TRUST_PROXY`، مع استخدام قيمة آمنة مناسبة تلقائيًا عند التشغيل على Render
 - حجب ملفات المصدر وملفات البيئة وخرائط JavaScript وأرشيف المشروع من العرض العام
 
 ## المتطلبات
@@ -51,7 +51,7 @@ npm start
 - `AI_MODEL` — الافتراضي `gpt-4o-mini`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
-- `TRUST_PROXY` — الافتراضي `0`. اضبطه فقط وفق بنية الـProxy الفعلية، مثل `1` إذا كان التطبيق خلف Proxy واحد موثوق.
+- `TRUST_PROXY` — اختياري. إذا لم تضبطه، يستخدم التطبيق `0` محليًا و`1` تلقائيًا عند اكتشاف Render. اضبطه صراحة إذا كانت بنية الـProxy مختلفة.
 - `SHOPIER_WEBHOOK_SECRET`
 - `SHOPIER_PRODUCT_BASIC_ID`
 - `SHOPIER_PRODUCT_PRO_ID`
