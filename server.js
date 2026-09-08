@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pgPromise from 'pg-promise';
 import OpenAI from 'openai';
+import crypto from 'node:crypto';
 
 const pgp = pgPromise();
 const db = pgp(process.env.DATABASE_URL || 'postgresql://localhost/star_ai');
@@ -62,7 +63,7 @@ setInterval(() => {
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a));
   const bb = Buffer.from(String(b));
-  return aa.length === bb.length && require('node:crypto').timingSafeEqual(aa, bb);
+  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
 }
 
 async function initializeDatabase() {
@@ -150,9 +151,7 @@ app.use((req, res, next) => {
 
 const blockedPublicPaths = new Set(['/server.js', '/package.json', '/package-lock.json', '/.env']);
 app.use((req, res, next) => {
-  if (blockedPublicPaths.has(req.path) || req.path.startsWith('/.git') || (req.path.endsWith('.js') && !req.path.startsWith('/api/'))) {
-    return res.status(404).end();
-  }
+  if (blockedPublicPaths.has(req.path) || req.path.startsWith('/.git') || (req.path.endsWith('.js') && !req.path.startsWith('/api/'))) return res.status(404).end();
   next();
 });
 app.use(express.static('.'));
