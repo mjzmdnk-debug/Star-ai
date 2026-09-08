@@ -11,14 +11,14 @@ STAR AI هو تطبيق ويب تركيّز نسخته الحالية على ح�
 - حجز الرصيد ذريًا قبل طلب AI مع استرداده تلقائيًا عند فشل الطلب
 - محادثات خاصة بكل مستخدم مع تحقق من الملكية
 - بحث وتصدير وحذف للمحادثات
-- Shopier checkout + webhook محمي بسر سري وidempotency
+- Shopier checkout + webhook مع تحقق HMAC-SHA256 رسمي من `Shopier-Signature` وidempotency
 - تسجيل المدفوعات الناجحة في `payment_transactions` لاستخدامها في إحصاءات الإيرادات
 - Basic وPro متاحان عبر Shopier
 - Business يظهر كـ"قريبًا" حتى يتم ضبط `SHOPIER_PRODUCT_BUSINESS_ID`
 - لوحة Admin مع إحصاءات ومستخدمين وتعديل الخطة والرصيد
 - Rate limiting مخزن في PostgreSQL، ذري وقابل للعمل عبر أكثر من instance، مع تنظيف تلقائي للسجلات القديمة
 - فحص صحة فعلي لاتصال PostgreSQL عبر `/api/health`
-- حماية CSRF/Origin لطلبات المتصفح التي تعتمد على cookies، مع استثناء webhook لأنه محمي بالسر السري
+- حماية CSRF/Origin لطلبات المتصفح التي تعتمد على cookies، مع استثناء webhook لأنه محمي بتوقيع Shopier
 - إعداد `trust proxy` قابل للضبط عبر `TRUST_PROXY`، مع استخدام قيمة آمنة مناسبة تلقائيًا عند التشغيل على Render
 - حجب ملفات المصدر وملفات البيئة وخرائط JavaScript وأرشيف المشروع من العرض العام
 
@@ -52,7 +52,7 @@ npm start
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `TRUST_PROXY` — اختياري. إذا لم تضبطه، يستخدم التطبيق `0` محليًا و`1` تلقائيًا عند اكتشاف Render. اضبطه صراحة إذا كانت بنية الـProxy مختلفة.
-- `SHOPIER_WEBHOOK_SECRET`
+- `SHOPIER_WEBHOOK_SECRET` — هنا يتم وضع **Webhook Token** الذي يوفره Shopier لإنشاء/إدارة webhook، وليس سرًا عشوائيًا مخصصًا للرأس.
 - `SHOPIER_PRODUCT_BASIC_ID`
 - `SHOPIER_PRODUCT_PRO_ID`
 - `SHOPIER_PRODUCT_BUSINESS_ID` — اختياري، وعند ضبطه فقط يصبح Business متاحًا
@@ -61,12 +61,14 @@ npm start
 العنوان:
 `https://YOUR-DOMAIN/api/shopier/webhook`
 
-أرسل سر الـWebhook في HTTP header باسم:
-`x-shopier-secret`
+Shopier الحديثة توقّع كل إشعارات Webhook في رأس HTTP باسم:
+`Shopier-Signature`
 
-يتم التحقق من السر قبل معالجة البيانات، ثم التحقق من رقم الطلب والبريد الإلكتروني وحالة الدفع ومعرّف المنتج. لا يعتمد النظام على اسم المنتج لتحديد الخطة، ويمنع تكرار معالجة الطلب عبر `webhook_events`.
+الخادم يحفظ الـraw body ويحسب HMAC-SHA256 باستخدام `SHOPIER_WEBHOOK_SECRET` ثم يقارن التوقيع قبل قبول الحدث. هذا هو أسلوب التحقق الموصى به من Shopier، وليس اعتمادًا على رأس مخصص من التطبيق. كما يمنع النظام تكرار معالجة نفس الطلب عبر `webhook_events` قبل إضافة Credits أو تسجيل الدفع.
 
-يدعم المعالج صيغًا شائعة للحقول (`orderId` / `order_id`، `paymentStatus` / `payment_status`، `lineItems` / `line_items` وغيرها) لأن Shopier توصي حاليًا باستخدام Webhooks الحديثة بدل OSB القديم. يجب مطابقة الحقول الفعلية التي يظهرها Webhook في حساب Shopier عند ربطه بالإنتاج.
+بعد نجاح التوقيع، يتحقق النظام من رقم الطلب والبريد الإلكتروني وحالة الدفع ومعرّف المنتج المطابق تمامًا لمعرّفات Shopier المضبوطة. لا يعتمد على اسم المنتج لتحديد الخطة.
+
+Shopier توصي حاليًا باستخدام Webhooks الحديثة بدل OSB القديم. كما تشترط أن يعيد endpoint استجابة `200 OK` خلال 5 ثوانٍ، وإلا قد تعيد إرسال الحدث عدة مرات؛ لذلك تتم معالجة الحدث داخل معاملة PostgreSQL مع idempotency. citeturn8view0
 
 ## Admin
 ضع `ADMIN_EMAIL` و`ADMIN_PASSWORD` قبل أول تشغيل. سيُنشأ حساب Admin تلقائيًا إذا لم يكن موجودًا.
