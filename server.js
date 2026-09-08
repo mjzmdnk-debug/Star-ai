@@ -517,9 +517,7 @@ app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat',
           await t.none('UPDATE users SET credits=credits+1 WHERE id=$1', [req.user_id]);
           await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, 1, 'AI request refund']);
         });
-      } catch (refundError) {
-        console.error('Credit refund failed:', refundError);
-      }
+      } catch (refundError) { console.error('Credit refund failed:', refundError); }
     }
     if (e.status === 404) return res.status(404).json({ error: 'Konuşma bulunamadı.' });
     if (e.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor.' });
@@ -558,54 +556,35 @@ app.get('/api/admin/users', auth, adminOnly, async (req, res) => {
   res.json({ rows });
 });
 app.post('/api/admin/users/:id/credits', auth, adminOnly, async (req, res) => {
-  const userId = Number(req.params.id);
+  const id = Number(req.params.id);
   const amount = Number(req.body?.amount);
-  if (!Number.isInteger(userId) || userId <= 0 || !Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1000000) {
-    return res.status(400).json({ error: 'Geçerli bir credits miktarı gerekli.' });
-  }
-  try {
-    const user = await db.tx(async t => {
-      const current = await t.oneOrNone('SELECT id,credits FROM users WHERE id=$1 FOR UPDATE', [userId]);
-      if (!current) throw Object.assign(new Error('NOT_FOUND'), { status: 404 });
-      const next = Number(current.credits) + amount;
-      if (next < 0) throw Object.assign(new Error('NEGATIVE'), { status: 400 });
-      const updated = await t.one('UPDATE users SET credits=$1 WHERE id=$2 RETURNING id,name,email,plan,credits,role', [next, userId]);
-      await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [userId, amount, `Admin adjustment by ${req.user_id}`]);
-      return updated;
-    });
-    res.json({ user });
-  } catch (e) {
-    if (e.status) return res.status(e.status).json({ error: e.message === 'NEGATIVE' ? 'Credits negatif olamaz.' : 'Kullanıcı bulunamadı.' });
-    console.error('Admin credit error:', e);
-    res.status(500).json({ error: 'Credits güncellenemedi.' });
-  }
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(amount) || amount < -100000 || amount > 100000) return res.status(400).json({ error: 'Geçersiz değer.' });
+  const user = await db.oneOrNone('UPDATE users SET credits=GREATEST(0,credits+$1) WHERE id=$2 RETURNING id,name,email,plan,credits,role', [amount, id]);
+  if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+  await db.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [id, amount, 'Admin adjustment']);
+  res.json({ user });
 });
 app.post('/api/admin/users/:id/plan', auth, adminOnly, async (req, res) => {
-  const userId = Number(req.params.id);
+  const id = Number(req.params.id);
   const plan = String(req.body?.plan || '').toLowerCase();
-  if (!Number.isInteger(userId) || userId <= 0 || !PLANS[plan]) return res.status(400).json({ error: 'Geçersiz kullanıcı veya plan.' });
-  const user = await db.oneOrNone('UPDATE users SET plan=$1 WHERE id=$2 RETURNING id,name,email,plan,credits,role', [plan, userId]);
+  if (!Number.isInteger(id) || id <= 0 || !PLANS[plan]) return res.status(400).json({ error: 'Geçersiz plan.' });
+  const user = await db.oneOrNone('UPDATE users SET plan=$1 WHERE id=$2 RETURNING id,name,email,plan,credits,role', [plan, id]);
   if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
   res.json({ user });
 });
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
-app.get('/{*splat}', (req, res) => res.sendFile('index.html', { root: process.cwd() }));
-
-app.use((error, req, res, next) => {
-  console.error('Unhandled request error:', error);
-  if (res.headersSent) return next(error);
-  res.status(500).json({ error: 'Beklenmeyen sunucu hatası.' });
+app.get('/{*splat}', (req, res) => {
+  res.sendFile('index.html', { root: '.' });
 });
 
 const port = Number(process.env.PORT || 3000);
-async function start() {
-  await initializeDatabase();
-  await createAdminIfNotExists();
-  await db.one('SELECT 1');
-  app.listen(port, '0.0.0.0', () => console.log(`STAR AI listening on ${port}`));
-}
-start().catch(error => {
-  console.error('Startup failed:', error);
-  process.exit(1);
-});
+initializeDatabase()
+  .then(createAdminIfNotExists)
+  .then(() => {
+    app.listen(port, () => console.log(`STAR AI running on port ${port}`));
+  })
+  .catch(error => {
+    console.error('Startup error:', error);
+    process.exit(1);
+  });
