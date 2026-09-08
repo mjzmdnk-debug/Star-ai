@@ -1,46 +1,82 @@
 # STAR AI — Commercial MVP
 
-Bu sürüm, STAR AI'ı ticari ürüne dönüştürmek için gereken temel backend'i içerir.
+STAR AI هو تطبيق ويب تركيّز نسخته الحالية على حسابات المستخدمين، محادثات AI، إدارة الرصيد، وخطط الاشتراك عبر Shopier.
 
-## Hazır
-- Kullanıcı kayıt/giriş/çıkış
-- HttpOnly JWT cookie
-- SQLite kullanıcı ve kredi muhasebesi
-- Gerçek OpenAI Responses API chat
-- Plan/credit yapısı
-- iyzico Subscription Checkout Form entegrasyon noktası
-- iyzico Subscription webhook V3 doğrulaması
-- Dashboard + chat + plan yükseltme ekranı
+## الحالة الحالية
+- تسجيل / دخول / خروج للمستخدمين
+- JWT داخل HttpOnly cookie مع SameSite وSecure في الإنتاج
+- PostgreSQL عبر `pg-promise`
+- OpenAI Chat Completions مع سياق آخر 20 رسالة
+- نظام Credits مع سجل محاسبي
+- حجز الرصيد ذريًا قبل طلب AI مع استرداده عند فشل الطلب
+- محادثات خاصة بكل مستخدم مع تحقق من الملكية
+- بحث وتصدير وحذف للمحادثات
+- Shopier checkout + webhook محمي بسر سري وidempotency
+- Basic وPro متاحان عبر Shopier
+- Business يظهر كـ"قريبًا" حتى يتم ضبط `SHOPIER_PRODUCT_BUSINESS_ID`
+- لوحة Admin مع إحصاءات ومستخدمين وتعديل الخطة والرصيد
+- Rate limiting على نقاط الدخول الحساسة
+- حماية CSRF/Origin لطلبات المتصفح التي تعتمد على cookies
+- حجب ملفات المصدر وملفات البيئة وخرائط JavaScript وأرشيف المشروع من العرض العام
 
-## Kurulum
-1. Node.js 20+ kur.
-2. `npm install`
-3. `.env.example` → `.env`
-4. `OPENAI_API_KEY` ekle.
-5. iyzico sandbox hesabından API Key / Secret Key ve plan reference code'larını ekle.
-6. `npm start`
-7. `http://localhost:3000`
+## المتطلبات
+- Node.js 20+
+- PostgreSQL
+- حساب OpenAI ومفتاح API
+- حساب Shopier إذا أردت تفعيل المدفوعات
 
-## iyzico
-iyzico'da önce STAR AI ürünü ve Basic/Pro/Business aylık planları oluşturup her planın `pricingPlanReferenceCode` değerini `.env` dosyasına koymalısın.
-Webhook adresi:
-`https://SENIN-DOMAININ/api/webhooks/iyzico`
+## التشغيل
+```bash
+npm install
+cp .env.example .env
+```
 
-İlk testte sandbox kullan. Canlıya geçerken IYZICO_BASE_URL ve merchant bilgilerini production değerleriyle değiştir.
+ثم اضبط المتغيرات المطلوبة في `.env`، وبعدها:
 
-## Önemli
-Bu paket gerçek üretim öncesi MVP'dir. Canlıya almadan önce HTTPS, rate limiting, CSRF politikası, e-posta doğrulama/şifre sıfırlama, KVKK metinleri, yedekleme, PostgreSQL ve izleme eklenmelidir.
+```bash
+npm start
+```
 
+افتح `http://localhost:3000`.
 
-## Admin Panel
-ضع `ADMIN_EMAIL` و `ADMIN_PASSWORD` في `.env` قبل أول تشغيل. عند التشغيل سيُنشأ حساب Admin تلقائياً إذا لم يكن موجوداً.
-بعد الدخول، افتح `/admin.html`.
+## متغيرات البيئة الأساسية
+- `NODE_ENV=production`
+- `PORT`
+- `DATABASE_URL`
+- `JWT_SECRET` — في الإنتاج يجب أن يكون 32 حرفًا على الأقل
+- `OPENAI_API_KEY`
+- `AI_MODEL` — الافتراضي `gpt-4o-mini`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `SHOPIER_WEBHOOK_SECRET`
+- `SHOPIER_PRODUCT_BASIC_ID`
+- `SHOPIER_PRODUCT_PRO_ID`
+- `SHOPIER_PRODUCT_BUSINESS_ID` — اختياري، وعند ضبطه فقط يصبح Business متاحًا
 
-اللوحة تعرض:
-- عدد المستخدمين
-- عدد المشتركين المدفوعين
-- Credits المتداولة والمستهلكة
-- قيمة الخطط الشهرية الحالية (ليست تقريراً محاسبياً نهائياً)
-- قائمة المستخدمين
-- تغيير الخطة
-- إضافة/خصم Credits
+## Shopier Webhook
+العنوان:
+`https://YOUR-DOMAIN/api/shopier/webhook`
+
+أرسل سر الـWebhook في HTTP header باسم:
+`x-shopier-secret`
+
+يجب أن يحتوي الحدث على حالة دفع ناجحة (`paid` أو `success` أو `completed`) ومعرّف منتج مطابق لمعرّفات Shopier المضبوطة في البيئة. لا يعتمد النظام على اسم المنتج لتحديد الخطة.
+
+## Admin
+ضع `ADMIN_EMAIL` و`ADMIN_PASSWORD` قبل أول تشغيل. سيُنشأ حساب Admin تلقائيًا إذا لم يكن موجودًا.
+
+بعد تسجيل الدخول افتح `/admin.html`.
+
+لوحة الإدارة تعرض:
+- إجمالي المستخدمين
+- المستخدمين المدفوعين
+- إجمالي Credits الحالية
+- Credits المستهلكة
+- القيمة الشهرية التقريبية للخطط
+- توزيع الخطط
+- المستخدمين
+- تعديل الخطة
+- إضافة أو خصم Credits
+
+## ملاحظات الإنتاج
+قبل الإطلاق التجاري النهائي يجب أيضًا إعداد HTTPS فعلي، نسخ احتياطية PostgreSQL، مراقبة وتنبيهات، سياسة احتفاظ بالسجلات، التحقق من البريد الإلكتروني واستعادة كلمة المرور، وصفحات الخصوصية والشروط المناسبة للسوق المستهدف، ومراجعة إعدادات الاستضافة وProxy بحيث تكون `trust proxy` صحيحة للبيئة المستخدمة.
