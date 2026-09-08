@@ -4,12 +4,22 @@ const serverFile = new URL('./server.js', import.meta.url);
 const dashboardFile = new URL('./dashboard.html', import.meta.url);
 
 let server = fs.readFileSync(serverFile, 'utf8');
-server = server.replace("app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));", "app.use(express.json({ limit: '8mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));");
+
+// The image endpoint needs a larger JSON body than the text-chat endpoint.
+server = server.replace(
+  "app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));",
+  "app.use(express.json({ limit: '8mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));"
+);
+
+// Never let a CDN/browser keep an old dashboard after a deployment.
+server = server.replace(
+  "res.setHeader('Cache-Control', req.path.startsWith('/api/') ? 'no-store' : 'public, max-age=300');",
+  "res.setHeader('Cache-Control', req.path.startsWith('/api/') || req.path === '/' || req.path.endsWith('.html') ? 'no-store' : 'public, max-age=300');"
+);
 
 if (!server.includes("app.post('/api/image-edit'")) {
   const imageEditRoute = String.raw`
 
-// Image editing through the Responses API. The older /images/edits path is avoided because GPT Image model validation on that endpoint is currently unreliable.
 app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => 'user:' + req.user_id }), async (req, res) => {
   if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });
   if (!openai) return res.status(503).json({ error: 'AI image service is not configured.' });
@@ -20,6 +30,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
   const header = separator > 0 ? imageData.slice(0, separator) : '';
   const payload = separator > 0 ? imageData.slice(separator + 1) : '';
   const allowedHeader = header === 'data:image/jpeg;base64' || header === 'data:image/jpg;base64' || header === 'data:image/png;base64' || header === 'data:image/webp;base64';
+
   if (!prompt) return res.status(400).json({ error: 'اكتب وصف التعديل المطلوب.' });
   if (!allowedHeader || !payload || !/^[A-Za-z0-9+/=]+$/.test(payload)) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
   if (imageData.length > 7000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
@@ -44,12 +55,13 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
         content: [
           {
             type: 'input_text',
-            text: 'Edit this image according to the following instruction: ' + prompt + '. Preserve the person\'s identity, composition, camera perspective, and every detail not explicitly requested to change. Make only the requested changes and keep everything else as close to the original as possible.'
+            text: 'Edit this image according to the following instruction: ' + prompt + '. Preserve identity, face, composition, camera perspective, lighting, background, clothing, and every detail that was not explicitly requested to change. Make only the requested changes and keep the result photorealistic and natural.'
           },
-          { type: 'input_image', image_url: imageData, detail: 'high' }
+          { type: 'input_image', image_url: imageData }
         ]
       }],
-      tools: [{ type: 'image_generation', model: 'gpt-image-2', action: 'edit', quality: 'medium' }]
+      tools: [{ type: 'image_generation', model: 'gpt-image-2', action: 'edit', quality: 'medium' }],
+      tool_choice: { type: 'image_generation' }
     });
 
     const imageCall = Array.isArray(response?.output)
@@ -57,10 +69,10 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       : null;
     const b64 = imageCall?.result;
     if (!b64) throw new Error('EMPTY_IMAGE_RESULT');
-    const resultDataUrl = 'data:image/png;base64,' + b64;
+
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
-    return res.json({ ok: true, image: resultDataUrl, credits: credits.credits, cost: IMAGE_EDIT_COST });
+    return res.json({ ok: true, image: 'data:image/png;base64,' + b64, credits: credits.credits, cost: IMAGE_EDIT_COST });
   } catch (error) {
     if (reserved) {
       try {
@@ -72,16 +84,20 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
         console.error('Image edit credit refund failed:', refundError);
       }
     }
+
+    console.error('IMAGE_EDIT_ERROR', {
+      name: error?.name,
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      type: error?.type
+    });
+
     if (error?.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor. Bir görsel düzenleme 5 kredi kullanır.' });
-    console.error('Image edit error:', error);
-    const message = String(error?.message || '');
-    if (message.toLowerCase().includes('content') || message.toLowerCase().includes('safety')) {
-      return res.status(400).json({ error: 'Bu görsel veya düzenleme isteği güvenlik kuralları nedeniyle işlenemedi.' });
-    }
-    if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('billing') || message.toLowerCase().includes('credit')) {
-      return res.status(503).json({ error: 'OpenAI görsel servisi için bakiye/kullanım limiti yetersiz.' });
-    }
-    return res.status(502).json({ error: 'OpenAI görsel servisi şu anda yanıt vermedi. Lütfen tekrar deneyin.' });
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('safety') || message.includes('content') || message.includes('policy')) return res.status(400).json({ error: 'Bu görsel veya düzenleme isteği güvenlik kuralları nedeniyle işlenemedi.' });
+    if (message.includes('quota') || message.includes('billing') || message.includes('credit')) return res.status(503).json({ error: 'OpenAI görsel servisi için bakiye/kullanım limiti yetersiz.' });
+    return res.status(502).json({ error: 'Görsel düzenleme servisi yanıt vermedi. Lütfen tekrar deneyin.' });
   }
 });
 `;
@@ -92,24 +108,175 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 fs.writeFileSync(serverFile, server);
 
 let dashboard = fs.readFileSync(dashboardFile, 'utf8');
-if (!dashboard.includes('image-edit-mode')) {
-  dashboard = dashboard.replace(
-    '.image-preview-info{min-width:0;flex:1}',
-    '.image-preview-info{min-width:0;flex:1}.image-edit-mode{display:flex;align-items:center;gap:6px;margin-top:5px}.image-mode-btn{border:1px solid rgba(168,85,247,.3);border-radius:8px;background:rgba(124,60,255,.1);color:#c7b3ff;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer}.image-mode-btn.active{background:rgba(124,60,255,.3);color:#fff}'
-  );
-  dashboard = dashboard.replace(
-    '<div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small>STAR AI bu görseli analiz edebilir.</small></div>',
-    '<div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small id="previewHint">Mod: تعديل الصورة • 5 kredi</small><div class="image-edit-mode"><button id="editMode" class="image-mode-btn active" type="button">✦ تعديل</button><button id="analyzeMode" class="image-mode-btn" type="button">◉ تحليل</button></div></div>'
-  );
-  dashboard = dashboard.replace("let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';", "let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';let imageMode='edit';");
-  dashboard = dashboard.replace("function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');}", "function showImagePreview(data,name){$('previewImage').src=data;$('previewName').textContent=name;$('imagePreview').classList.add('open');updateImageMode();}function updateImageMode(){const edit=imageMode==='edit';$('editMode').classList.toggle('active',edit);$('analyzeMode').classList.toggle('active',!edit);$('previewHint').textContent=edit?'Mod: تعديل الصورة • 5 kredi':'Mod: تحليل الصورة • 1 kredi';}");
-  dashboard = dashboard.replace("$('attachButton').addEventListener('click',()=>$('imageInput').click());", "$('editMode').addEventListener('click',()=>{imageMode='edit';updateImageMode();});$('analyzeMode').addEventListener('click',()=>{imageMode='analyze';updateImageMode();});$('attachButton').addEventListener('click',()=>$('imageInput').click());");
-  dashboard = dashboard.replace(
-    "const body={message:text||'Bu görseli analiz et.'};if(conversationId)body.conversation_id=conversationId;if(imageToSend)body.image_data=imageToSend;const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';",
-    "let response;let data;const endpoint=imageToSend&&imageMode==='edit'?'/api/image-edit':'/api/chat';if(endpoint==='/api/image-edit'){response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:imageToSend,prompt:text})});data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Görsel düzenlenemedi.';return;}aiMessage.replaceChildren();const result=document.createElement('img');result.className='message-image';result.src=data.image;result.alt='Düzenlenmiş görsel';aiMessage.appendChild(result);if(data.credits!==undefined)setCredits(data.credits);}else{const body={message:text||'Bu görseli analiz et.'};if(conversationId)body.conversation_id=conversationId;if(imageToSend)body.image_data=imageToSend;response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});data=await response.json().catch(()=>({}));if(!response.ok){aiMessage.textContent=data.error||'Bir hata oluştu.';return;}aiMessage.textContent=data.answer||'Yanıt alınamadı.';}"
-  );
-  dashboard = dashboard.replace("const wasNew=!conversationId;conversationId=data.conversation_id||conversationId;if(data.credits!==undefined)setCredits(data.credits);if(wasNew)await loadConversations();else renderConversations();", "const wasNew=!conversationId;if(data.conversation_id)conversationId=data.conversation_id;if(data.credits!==undefined)setCredits(data.credits);if(endpoint==='/api/chat'&&(wasNew||data.conversation_id))await loadConversations();else renderConversations();");
+
+// UI enhancement is deliberately appended instead of relying on fragile string replacements in the old dashboard.
+const enhancementScript = String.raw`
+<script>
+(function () {
+  function initStarEnhancements() {
+    if (window.__starEnhancementsReady) return;
+    window.__starEnhancementsReady = true;
+
+    document.documentElement.style.setProperty('--star-font', 'Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif');
+    document.body.style.fontFamily = 'var(--star-font)';
+
+    const preview = document.getElementById('imagePreview');
+    const info = preview && preview.querySelector('.image-preview-info');
+    const form = document.getElementById('chat');
+    const input = document.getElementById('message');
+    const fileInput = document.getElementById('imageInput');
+    const messages = document.getElementById('messagesInner');
+    const sendButton = document.getElementById('sendButton');
+    const credits = document.getElementById('credits');
+    const creditsSide = document.getElementById('creditsSide');
+    if (!preview || !info || !form || !input || !fileInput || !messages) return;
+
+    let imageMode = 'edit';
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .star-image-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+      .star-image-tool,.star-quick-tool{border:1px solid rgba(168,85,247,.28);background:rgba(124,60,255,.10);color:#cfc3ff;border-radius:10px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;transition:.18s ease}
+      .star-image-tool.active,.star-image-tool:hover,.star-quick-tool:hover{background:rgba(124,60,255,.28);color:#fff;border-color:rgba(183,135,255,.5);transform:translateY(-1px)}
+      .star-quick-tools{width:min(920px,100%);margin:0 auto 8px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}
+      .star-quick-tools::-webkit-scrollbar{display:none}
+      .star-result-label{font-size:11px;color:#8f879e;margin-bottom:8px;font-weight:700}
+      .star-error{color:#ffb7c1!important;background:rgba(244,63,94,.08)!important;border-color:rgba(244,63,94,.25)!important}
+      .dashboard-page #message{font-family:var(--star-font);letter-spacing:-.01em}
+    `;
+    document.head.appendChild(style);
+
+    const tools = document.createElement('div');
+    tools.className = 'star-image-tools';
+    tools.innerHTML = '<button type="button" class="star-image-tool active" data-mode="edit">✦ تعديل الصورة</button><button type="button" class="star-image-tool" data-mode="analyze">◉ تحليل الصورة</button>';
+    info.appendChild(tools);
+
+    tools.querySelectorAll('[data-mode]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        imageMode = button.dataset.mode;
+        tools.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('active', b === button); });
+      });
+    });
+
+    const composerWrap = form.parentElement;
+    const quick = document.createElement('div');
+    quick.className = 'star-quick-tools';
+    quick.innerHTML = '<button type="button" class="star-quick-tool">✨ تحسين النص</button><button type="button" class="star-quick-tool">💡 أفكار</button><button type="button" class="star-quick-tool">📝 تلخيص</button><button type="button" class="star-quick-tool">🌐 ترجمة</button>';
+    composerWrap.insertBefore(quick, preview);
+    quick.querySelectorAll('button').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const label = button.textContent || '';
+        const prompts = {
+          '✨ تحسين النص': 'حسّن صياغة النص التالي واجعله أوضح وأجمل مع الحفاظ على المعنى:',
+          '💡 أفكار': 'اقترح لي أفكاراً عملية ومبتكرة حول:',
+          '📝 تلخيص': 'لخّص النص التالي في نقاط واضحة ومختصرة:',
+          '🌐 ترجمة': 'ترجم النص التالي إلى العربية ترجمة طبيعية ودقيقة:'
+        };
+        input.value = (prompts[label] || '') + (input.value ? ' ' + input.value : '');
+        input.focus();
+      });
+    });
+
+    function setCredits(value) {
+      if (credits && value !== undefined) credits.textContent = String(value);
+      if (creditsSide && value !== undefined) creditsSide.textContent = String(value);
+    }
+
+    function readFile(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function () { resolve(String(reader.result || '')); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function addResult(imageUrl, prompt) {
+      const box = document.createElement('div');
+      box.className = 'msg ai';
+      const label = document.createElement('div');
+      label.className = 'star-result-label';
+      label.textContent = '✦ تم تعديل الصورة';
+      const image = document.createElement('img');
+      image.className = 'message-image';
+      image.src = imageUrl;
+      image.alt = prompt || 'Düzenlenmiş görsel';
+      box.appendChild(label);
+      box.appendChild(image);
+      messages.appendChild(box);
+      const scroller = document.getElementById('messages');
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    function showError(text) {
+      const box = document.createElement('div');
+      box.className = 'msg ai star-error';
+      box.textContent = text;
+      messages.appendChild(box);
+      const scroller = document.getElementById('messages');
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    form.addEventListener('submit', async function (event) {
+      if (imageMode !== 'edit' || !fileInput.files || !fileInput.files[0]) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (sendButton) sendButton.disabled = true;
+
+      const file = fileInput.files[0];
+      const prompt = String(input.value || '').trim();
+      if (!prompt) {
+        showError('اكتب أولاً ما تريد تغييره في الصورة، مثلاً: كبر العضلات بشكل طبيعي مع الحفاظ على الوجه والخلفية.');
+        if (sendButton) sendButton.disabled = false;
+        input.focus();
+        return;
+      }
+
+      try {
+        const imageData = await readFile(file);
+        const userBox = document.createElement('div');
+        userBox.className = 'msg user';
+        const thumb = document.createElement('img');
+        thumb.className = 'message-image';
+        thumb.src = imageData;
+        userBox.appendChild(thumb);
+        const caption = document.createElement('div');
+        caption.textContent = prompt;
+        userBox.appendChild(caption);
+        messages.appendChild(userBox);
+
+        const response = await fetch('/api/image-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ image_data: imageData, prompt: prompt })
+        });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(data.error || ('Image edit failed (' + response.status + ')'));
+        if (!data.image) throw new Error('لم تصل صورة من خادم التعديل.');
+        addResult(data.image, prompt);
+        if (data.credits !== undefined) setCredits(data.credits);
+        input.value = '';
+        fileInput.value = '';
+        if (preview) preview.classList.remove('open');
+      } catch (error) {
+        showError(String(error && error.message ? error.message : 'تعذر الاتصال بخدمة تعديل الصور.'));
+      } finally {
+        if (sendButton) sendButton.disabled = false;
+      }
+    }, true);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initStarEnhancements);
+  else initStarEnhancements();
+})();
+</script>
+`;
+
+if (!dashboard.includes('__starEnhancementsReady')) {
+  dashboard = dashboard.replace('</body>', enhancementScript + '</body>');
 }
+
 fs.writeFileSync(dashboardFile, dashboard);
-console.log('STAR AI image editing enabled through Responses API.');
+console.log('STAR AI image editing and enhanced UI enabled.');
 await import('./server.js');
