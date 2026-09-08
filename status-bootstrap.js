@@ -64,4 +64,5 @@ if (!dashboard.includes('data-star-status-indicator="v1"')) {
 }
 
 await import('./ui-design-bootstrap.js');
+await import('./asset-serving-bootstrap.js');
 await import('./image-support-bootstrap.js');
