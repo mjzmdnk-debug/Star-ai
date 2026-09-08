@@ -54,7 +54,8 @@ function parseTrustProxy(value) {
   if (raw.includes(',')) return raw.split(',').map(v => v.trim()).filter(Boolean);
   return raw;
 }
-app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+const defaultTrustProxy = String(process.env.RENDER || '').toLowerCase() === 'true' ? 1 : 0;
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY ?? defaultTrustProxy));
 
 const RATE_LIMIT_MAX_KEY_LENGTH = 200;
 async function enforceRateLimit(req, res, next, { windowMs, max, scope, getKey = clientKey }) {
