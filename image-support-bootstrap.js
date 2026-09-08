@@ -16,14 +16,17 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 
   const prompt = String(req.body?.prompt || '').trim().slice(0, 12000);
   const imageData = String(req.body?.image_data || '').trim();
-  const match = imageData.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  const separator = imageData.indexOf(',');
+  const header = separator > 0 ? imageData.slice(0, separator) : '';
+  const payload = separator > 0 ? imageData.slice(separator + 1) : '';
+  const allowedHeader = header === 'data:image/jpeg;base64' || header === 'data:image/jpg;base64' || header === 'data:image/png;base64' || header === 'data:image/webp;base64';
   if (!prompt) return res.status(400).json({ error: 'اكتب وصف التعديل المطلوب.' });
-  if (!match) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
+  if (!allowedHeader || !payload || !/^[A-Za-z0-9+/=]+$/.test(payload)) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
   if (imageData.length > 7000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
 
-  const imageMime = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
-  const imageBuffer = Buffer.from(match[2], 'base64');
-  if (imageBuffer.length > 5000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
+  const imageMime = header === 'data:image/png;base64' ? 'image/png' : header === 'data:image/webp;base64' ? 'image/webp' : 'image/jpeg';
+  const imageBuffer = Buffer.from(payload, 'base64');
+  if (!imageBuffer.length || imageBuffer.length > 5000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
 
   const IMAGE_EDIT_COST = 5;
   let reserved = false;
@@ -75,8 +78,8 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
   }
 });
 `;
-  const anchor = "async function initializeDatabase() {";
-  if (server.includes(anchor)) server = server.replace(anchor, imageEditRoute + '\n' + anchor);
+  const anchor = 'app.use(csrfProtection);';
+  if (server.includes(anchor)) server = server.replace(anchor, anchor + imageEditRoute);
 }
 
 fs.writeFileSync(serverFile, server);
