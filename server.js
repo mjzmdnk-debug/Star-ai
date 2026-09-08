@@ -267,7 +267,7 @@ function isPaidStatus(status) {
 }
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 app.use(cookieParser());
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -310,9 +310,14 @@ app.post('/api/billing/checkout', auth, rateLimit({ windowMs: 60000, max: 20, sc
 app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'webhook' }), async (req, res) => {
   try {
     const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || '').trim();
-    if (!secret) return res.status(503).json({ error: 'Webhook secret is not configured.' });
-    const received = String(req.headers['x-shopier-secret'] || req.headers['x-webhook-secret'] || '').trim();
-    if (!received || !safeEqual(received, secret)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!secret) return res.status(503).json({ error: 'Webhook token is not configured.' });
+    const received = String(req.get('Shopier-Signature') || '').trim();
+    const rawBody = Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(JSON.stringify(req.body || {}));
+    const expectedHex = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    const expectedBase64 = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
+    if (!received || (!safeEqual(received, expectedHex) && !safeEqual(received, expectedBase64))) {
+      return res.status(401).json({ error: 'Invalid webhook signature.' });
+    }
 
     const body = req.body || {};
     const event = String(body.event || body.type || body.event_type || '').trim().toLowerCase();
@@ -353,8 +358,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
       );
       await t.none(
         'INSERT INTO subscriptions(user_id,plan,status,iyzico_subscription_ref,iyzico_customer_ref) VALUES($1,$2,$3,$4,$5)',
-        [user.id, plan, 'active', order.orderId, 'shopier']
-      );
+        [user.id, plan, 'active', order.orderId, 'shopier']);
     });
     res.status(200).json({ ok: true, plan, credits: product.credits });
   } catch (e) {
