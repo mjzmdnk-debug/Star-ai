@@ -75,8 +75,8 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
   }
 });
 `;
-  const anchor = "app.use(cookieParser());";
-  if (server.includes(anchor)) server = server.replace(anchor, anchor + imageEditRoute);
+  const anchor = "async function initializeDatabase() {";
+  if (server.includes(anchor)) server = server.replace(anchor, imageEditRoute + '\n' + anchor);
 }
 
 fs.writeFileSync(serverFile, server);
