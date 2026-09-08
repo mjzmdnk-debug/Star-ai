@@ -16,7 +16,7 @@ STAR AI هو تطبيق ويب تركيّز نسخته الحالية على ح�
 - Basic وPro متاحان عبر Shopier
 - Business يظهر كـ"قريبًا" حتى يتم ضبط `SHOPIER_PRODUCT_BUSINESS_ID`
 - لوحة Admin مع إحصاءات ومستخدمين وتعديل الخطة والرصيد
-- Rate limiting مع تنظيف تلقائي وحد أقصى لحجم الذاكرة
+- Rate limiting مخزن في PostgreSQL، ذري وقابل للعمل عبر أكثر من instance، مع تنظيف تلقائي للسجلات القديمة
 - فحص صحة فعلي لاتصال PostgreSQL عبر `/api/health`
 - حماية CSRF/Origin لطلبات المتصفح التي تعتمد على cookies، مع استثناء webhook لأنه محمي بالسر السري
 - إعداد `trust proxy` صريح عبر `TRUST_PROXY` بدل قيمة ثابتة داخل الكود
