@@ -147,7 +147,231 @@ app.get('/api/health',(req,res)=>res.json({
   paymentConfigured:Boolean(process.env.IYZICO_API_KEY && process.env.IYZICO_SECRET_KEY),
   model:process.env.AI_MODEL || 'gpt-4o-mini'
 }));
+// ==================== SHOPIER ====================
 
+const SHOPIER_PRODUCTS = {
+  basic: {
+    id: '50673465',
+    name: 'STAR AI Basic',
+    price: 199,
+    credits: 5000,
+    url: 'https://shopier.com/50673465'
+  },
+  pro: {
+    id: '50673487',
+    name: 'STAR AI Pro',
+    price: 399,
+    credits: 15000,
+    url: 'https://shopier.com/50673487'
+  }
+};
+
+// رابط الدفع للعميل
+app.post('/api/billing/checkout', auth, async (req, res) => {
+  try {
+    const plan = String(req.body?.plan || '').toLowerCase();
+    const product = SHOPIER_PRODUCTS[plan];
+
+    if (!product) {
+      return res.status(400).json({ error: 'Plan geçersiz.' });
+    }
+
+    res.json({
+      ok: true,
+      plan,
+      name: product.name,
+      price: product.price,
+      credits: product.credits,
+      paymentPageUrl: product.url
+    });
+  } catch (e) {
+    console.error('Shopier checkout error:', e);
+    res.status(500).json({ error: 'Ödeme bağlantısı oluşturulamadı.' });
+  }
+});
+
+// إشعار Shopier بعد إنشاء الطلب
+app.post('/api/shopier/webhook', async (req, res) => {
+  try {
+    const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || '').trim();
+
+    if (secret) {
+      const received =
+        String(req.query?.secret || req.headers['x-shopier-secret'] || '').trim();
+
+      if (received !== secret) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
+
+    const body = req.body || {};
+
+    if (body.event && body.event !== 'order.created') {
+      return res.status(200).json({ ok: true });
+    }
+
+    const order = body.order || body.data || body;
+
+    const orderId = String(
+      order.id ||
+      order.orderId ||
+      order.order_id ||
+      body.orderId ||
+      ''
+    ).trim();
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID missing.' });
+    }
+
+    const eventRef = `shopier-order-${orderId}`;
+
+    const existing = await db.oneOrNone(
+      'SELECT id FROM webhook_events WHERE event_ref=$1',
+      [eventRef]
+    );
+
+    if (existing) {
+      return res.status(200).json({ ok: true, duplicate: true });
+    }
+
+    await db.none(
+      'INSERT INTO webhook_events(event_ref,event_type,payload) VALUES($1,$2,$3)',
+      [
+        eventRef,
+        'shopier.order.created',
+        JSON.stringify(body)
+      ]
+    );
+
+    const paymentStatus = String(
+      order.paymentStatus ||
+      order.payment_status ||
+      body.paymentStatus ||
+      ''
+    ).toLowerCase();
+
+    if (paymentStatus && paymentStatus !== 'paid') {
+      return res.status(200).json({ ok: true, paymentStatus });
+    }
+
+    const buyerEmail = String(
+      order.buyer?.email ||
+      order.buyerEmail ||
+      order.email ||
+      body.buyerEmail ||
+      ''
+    ).trim().toLowerCase();
+
+    if (!buyerEmail) {
+      return res.status(400).json({ error: 'Buyer email missing.' });
+    }
+
+    let productId = '';
+
+    const lineItems =
+      order.lineItems ||
+      order.line_items ||
+      body.lineItems ||
+      [];
+
+    if (Array.isArray(lineItems) && lineItems.length > 0) {
+      productId = String(
+        lineItems[0]?.productId ||
+        lineItems[0]?.product_id ||
+        ''
+      );
+    }
+
+    const title = String(
+      lineItems[0]?.title ||
+      lineItems[0]?.name ||
+      order.productName ||
+      ''
+    ).toLowerCase();
+
+    let plan = null;
+
+    if (productId === SHOPIER_PRODUCTS.basic.id || title.includes('basic')) {
+      plan = 'basic';
+    } else if (
+      productId === SHOPIER_PRODUCTS.pro.id ||
+      title.includes('pro')
+    ) {
+      plan = 'pro';
+    }
+
+    if (!plan) {
+      console.error('Shopier product not recognized:', {
+        productId,
+        title,
+        orderId
+      });
+
+      return res.status(200).json({
+        ok: true,
+        warning: 'Product not recognized.'
+      });
+    }
+
+    const product = SHOPIER_PRODUCTS[plan];
+
+    const user = await db.oneOrNone(
+      'SELECT id FROM users WHERE email=$1',
+      [buyerEmail]
+    );
+
+    if (!user) {
+      console.error('STAR AI user not found:', buyerEmail);
+
+      return res.status(200).json({
+        ok: true,
+        warning: 'User email not found.'
+      });
+    }
+
+    await addCredits(
+      user.id,
+      product.credits,
+      `Shopier ${product.name} - Order ${orderId}`
+    );
+
+    await db.none(
+      `INSERT INTO subscriptions
+       (user_id, plan, status, iyzico_subscription_ref, iyzico_customer_ref)
+       VALUES($1,$2,$3,$4,$5)`,
+      [
+        user.id,
+        plan,
+        'active',
+        orderId,
+        'shopier'
+      ]
+    );
+
+    await db.none(
+      'UPDATE users SET plan=$1 WHERE id=$2',
+      [plan, user.id]
+    );
+
+    console.log(
+      `✅ Shopier payment: ${buyerEmail} -> ${product.name} -> +${product.credits} credits`
+    );
+
+    res.status(200).json({
+      ok: true,
+      userId: user.id,
+      plan,
+      credits: product.credits
+    });
+
+  } catch (e) {
+    console.error('Shopier webhook error:', e);
+    res.status(500).json({ error: 'Webhook processing failed.' });
+  }
+});
+
+// ==================== END SHOPIER ====================
 app.post('/api/auth/register', async (req,res)=>{
   try{
     const name=String(req.body?.name||'').trim();
