@@ -29,14 +29,41 @@ const PLANS = {
 };
 
 const SHOPIER_PRODUCTS = {
-  basic: { id: '50673465', name: 'STAR AI Basic', price: 199, credits: 5000, url: 'https://shopier.com/50673465' },
-  pro: { id: '50673487', name: 'STAR AI Pro', price: 399, credits: 15000, url: 'https://shopier.com/50673487' }
+  basic: { id: process.env.SHOPIER_PRODUCT_BASIC_ID || '50673465', name: 'STAR AI Basic', price: 199, credits: 5000, url: 'https://shopier.com/50673465' },
+  pro: { id: process.env.SHOPIER_PRODUCT_PRO_ID || '50673487', name: 'STAR AI Pro', price: 399, credits: 15000, url: 'https://shopier.com/50673487' },
+  ...(process.env.SHOPIER_PRODUCT_BUSINESS_ID ? { business: { id: process.env.SHOPIER_PRODUCT_BUSINESS_ID, name: 'STAR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${process.env.SHOPIER_PRODUCT_BUSINESS_ID}` } } : {})
 };
 
-const allowedModels = new Set([
-  AI_MODEL,
-  'gpt-4o-mini'
-]);
+const allowedModels = new Set([AI_MODEL, 'gpt-4o-mini']);
+const rateBuckets = new Map();
+
+function rateLimit({ windowMs, max, key }) {
+  return (req, res, next) => {
+    const identifier = typeof key === 'function' ? key(req) : req.ip;
+    const bucketKey = `${key?.name || 'rate'}:${identifier}`;
+    const now = Date.now();
+    let bucket = rateBuckets.get(bucketKey);
+    if (!bucket || bucket.resetAt <= now) bucket = { count: 0, resetAt: now + windowMs };
+    bucket.count += 1;
+    rateBuckets.set(bucketKey, bucket);
+    if (bucket.count > max) {
+      res.setHeader('Retry-After', Math.ceil((bucket.resetAt - now) / 1000));
+      return res.status(429).json({ error: 'Çok fazla istek gönderildi. Lütfen biraz sonra tekrar deneyin.' });
+    }
+    next();
+  };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) if (bucket.resetAt <= now) rateBuckets.delete(key);
+}, 60000).unref();
+
+function safeEqual(a, b) {
+  const aa = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  return aa.length === bb.length && require('node:crypto').timingSafeEqual(aa, bb);
+}
 
 async function initializeDatabase() {
   await db.none(`
@@ -103,10 +130,7 @@ async function createAdminIfNotExists() {
   const existing = await db.oneOrNone('SELECT id FROM users WHERE email=$1', [ADMIN_EMAIL]);
   if (!existing) {
     const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-    await db.none(
-      'INSERT INTO users(name,email,password_hash,plan,credits,role) VALUES($1,$2,$3,$4,$5,$6)',
-      ['STAR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin']
-    );
+    await db.none('INSERT INTO users(name,email,password_hash,plan,credits,role) VALUES($1,$2,$3,$4,$5,$6)', ['STAR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin']);
   }
 }
 
@@ -124,6 +148,13 @@ app.use((req, res, next) => {
   next();
 });
 
+const blockedPublicPaths = new Set(['/server.js', '/package.json', '/package-lock.json', '/.env']);
+app.use((req, res, next) => {
+  if (blockedPublicPaths.has(req.path) || req.path.startsWith('/.git') || (req.path.endsWith('.js') && !req.path.startsWith('/api/'))) {
+    return res.status(404).end();
+  }
+  next();
+});
 app.use(express.static('.'));
 
 function tokenFor(user) {
@@ -154,13 +185,7 @@ async function adminOnly(req, res, next) {
 }
 
 function setAuthCookie(res, user) {
-  res.cookie('star_token', tokenFor(user), {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isProduction,
-    maxAge: 30 * 86400000,
-    path: '/'
-  });
+  res.cookie('star_token', tokenFor(user), { httpOnly: true, sameSite: 'lax', secure: isProduction, maxAge: 30 * 86400000, path: '/' });
 }
 
 function addCredits(userId, amount, reason) {
@@ -184,12 +209,7 @@ function validateChatInput(body) {
   return { message, conversationId, model, temperature, maxTokens };
 }
 
-app.get('/api/health', (req, res) => res.json({
-  ok: true,
-  aiConnected: Boolean(openai),
-  paymentConfigured: Boolean(process.env.SHOPIER_WEBHOOK_SECRET),
-  model: AI_MODEL
-}));
+app.get('/api/health', (req, res) => res.json({ ok: true, aiConnected: Boolean(openai), paymentConfigured: Boolean(process.env.SHOPIER_WEBHOOK_SECRET), model: AI_MODEL }));
 
 app.post('/api/billing/checkout', auth, async (req, res) => {
   try {
@@ -203,58 +223,41 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
   }
 });
 
-app.post('/api/shopier/webhook', async (req, res) => {
+app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, key: function webhookIp(req) { return req.ip; } }), async (req, res) => {
   try {
     const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || '').trim();
     if (!secret) return res.status(503).json({ error: 'Webhook secret is not configured.' });
     const received = String(req.query?.secret || req.headers['x-shopier-secret'] || '').trim();
-    if (!received || received !== secret) return res.status(401).json({ error: 'Unauthorized' });
-
+    if (!received || !safeEqual(received, secret)) return res.status(401).json({ error: 'Unauthorized' });
     const body = req.body || {};
     if (body.event && body.event !== 'order.created') return res.status(200).json({ ok: true });
     const order = body.order || body.data || body;
     const orderId = String(order.id || order.orderId || order.order_id || body.orderId || '').trim();
     if (!orderId) return res.status(400).json({ error: 'Order ID missing.' });
-
     const paymentStatus = String(order.paymentStatus || order.payment_status || body.paymentStatus || '').toLowerCase();
-    if (paymentStatus && !['paid', 'success', 'completed'].includes(paymentStatus)) {
-      return res.status(200).json({ ok: true, paymentStatus });
-    }
-
+    if (paymentStatus && !['paid', 'success', 'completed'].includes(paymentStatus)) return res.status(200).json({ ok: true, paymentStatus });
     const buyerEmail = String(order.buyer?.email || order.buyerEmail || order.email || body.buyerEmail || '').trim().toLowerCase();
     if (!buyerEmail) return res.status(400).json({ error: 'Buyer email missing.' });
-
     const lineItems = order.lineItems || order.line_items || body.lineItems || [];
     const firstItem = Array.isArray(lineItems) ? lineItems[0] : null;
     const productId = String(firstItem?.productId || firstItem?.product_id || '').trim();
     const title = String(firstItem?.title || firstItem?.name || order.productName || '').toLowerCase();
     let plan = null;
-    if (productId === SHOPIER_PRODUCTS.basic.id || title.includes('basic')) plan = 'basic';
-    if (productId === SHOPIER_PRODUCTS.pro.id || title.includes('pro')) plan = 'pro';
+    if (productId === SHOPIER_PRODUCTS.basic.id || (!productId && title.includes('basic'))) plan = 'basic';
+    if (productId === SHOPIER_PRODUCTS.pro.id || (!productId && title.includes('pro'))) plan = 'pro';
+    if (SHOPIER_PRODUCTS.business && (productId === SHOPIER_PRODUCTS.business.id || (!productId && title.includes('business')))) plan = 'business';
     if (!plan) return res.status(400).json({ error: 'Product not recognized.' });
-
     const product = SHOPIER_PRODUCTS[plan];
     const eventRef = `shopier-order-${orderId}`;
-
     await db.tx(async t => {
-      const inserted = await t.result(
-        'INSERT INTO webhook_events(event_ref,event_type,payload) VALUES($1,$2,$3) ON CONFLICT(event_ref) DO NOTHING',
-        [eventRef, 'shopier.order.created', JSON.stringify(body)]
-      );
+      const inserted = await t.result('INSERT INTO webhook_events(event_ref,event_type,payload) VALUES($1,$2,$3) ON CONFLICT(event_ref) DO NOTHING', [eventRef, 'shopier.order.created', JSON.stringify(body)]);
       if (inserted.rowCount !== 1) return;
-
       const user = await t.oneOrNone('SELECT id FROM users WHERE email=$1 FOR UPDATE', [buyerEmail]);
       if (!user) throw new Error('STAR AI user not found.');
-
       await t.none('UPDATE users SET credits=credits+$1, plan=$2 WHERE id=$3', [product.credits, plan, user.id]);
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [user.id, product.credits, `Shopier ${product.name} - Order ${orderId}`]);
-      await t.none(
-        `INSERT INTO subscriptions(user_id,plan,status,iyzico_subscription_ref,iyzico_customer_ref)
-         VALUES($1,$2,$3,$4,$5)`,
-        [user.id, plan, 'active', orderId, 'shopier']
-      );
+      await t.none('INSERT INTO subscriptions(user_id,plan,status,iyzico_subscription_ref,iyzico_customer_ref) VALUES($1,$2,$3,$4,$5)', [user.id, plan, 'active', orderId, 'shopier']);
     });
-
     res.status(200).json({ ok: true, plan, credits: product.credits });
   } catch (e) {
     console.error('Shopier webhook error:', e);
@@ -262,19 +265,14 @@ app.post('/api/shopier/webhook', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', rateLimit({ windowMs: 15 * 60000, max: 10, key: function registerIp(req) { return req.ip; } }), async (req, res) => {
   try {
     const name = String(req.body?.name || '').trim().slice(0, 100);
     const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
     const password = String(req.body?.password || '');
-    if (name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || password.length < 8 || password.length > 200) {
-      return res.status(400).json({ error: 'Ad, geçerli e-posta ve 8-200 karakterli şifre gerekli.' });
-    }
+    if (name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || password.length < 8 || password.length > 200) return res.status(400).json({ error: 'Ad, geçerli e-posta ve 8-200 karakterli şifre gerekli.' });
     const hash = await bcrypt.hash(password, 12);
-    const result = await db.one(
-      'INSERT INTO users(name,email,password_hash) VALUES($1,$2,$3) RETURNING id,name,email,plan,credits,role',
-      [name, email, hash]
-    );
+    const result = await db.one('INSERT INTO users(name,email,password_hash) VALUES($1,$2,$3) RETURNING id,name,email,plan,credits,role', [name, email, hash]);
     setAuthCookie(res, result);
     res.status(201).json({ user: result });
   } catch (e) {
@@ -284,7 +282,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60000, max: 10, key: function loginIp(req) { return req.ip; } }), async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
     const password = String(req.body?.password || '');
@@ -359,13 +357,13 @@ app.get('/api/conversations/:id/messages', auth, async (req, res) => {
   }
 });
 
-app.post('/api/chat', auth, async (req, res) => {
+app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, key: function chatUser(req) { return req.user_id; } }), async (req, res) => {
   const { message, conversationId, model, temperature, maxTokens } = validateChatInput(req.body);
   if (!message) return res.status(400).json({ error: 'Mesaj gerekli.' });
   if (!openai) return res.status(503).json({ error: 'AI bağlantısı için OPENAI_API_KEY ayarlanmalı.' });
-
+  let reserved = false;
+  let conversation_id = conversationId;
   try {
-    let conversation_id = conversationId;
     if (conversation_id) {
       const owned = await ownedConversation(req.user_id, conversation_id);
       if (!owned) return res.status(404).json({ error: 'المحادثة غير موجودة.' });
@@ -374,39 +372,38 @@ app.post('/api/chat', auth, async (req, res) => {
       conversation_id = conv.id;
     }
 
-    const user = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
-    if (user.credits < 1) return res.status(402).json({ error: 'Kredi bakiyeniz bitti.' });
-
-    await db.none(
-      'INSERT INTO messages(conversation_id,role,content,model,temperature,max_tokens) VALUES($1,$2,$3,$4,$5,$6)',
-      [conversation_id, 'user', message, model, temperature, maxTokens]
-    );
-
-    const response = await openai.chat.completions.create({
-      model,
-      messages: [{ role: 'system', content: 'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.' }, { role: 'user', content: message }],
-      max_tokens: maxTokens,
-      temperature
-    });
-
-    const answer = response.choices[0]?.message?.content || 'Yanıt alınamadı.';
-
-    const spent = await db.tx(async t => {
+    const reservedResult = await db.tx(async t => {
       const result = await t.result('UPDATE users SET credits=credits-1 WHERE id=$1 AND credits>0', [req.user_id]);
       if (result.rowCount !== 1) return false;
-      await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -1, 'AI kullanımı']);
+      await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -1, 'AI kullanımı - rezervasyon']);
       return true;
     });
-    if (!spent) return res.status(402).json({ error: 'Kredi bakiyeniz bitti.' });
+    if (!reservedResult) return res.status(402).json({ error: 'Kredi bakiyeniz bitti.' });
+    reserved = true;
+
+    const history = await db.any('SELECT role,content FROM messages WHERE conversation_id=$1 AND role IN ($2,$3) ORDER BY id DESC LIMIT 20', [conversation_id, 'user', 'assistant']);
+    history.reverse();
+    const messages = [
+      { role: 'system', content: 'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.' },
+      ...history,
+      { role: 'user', content: message }
+    ];
+
+    const response = await openai.chat.completions.create({ model, messages, max_tokens: maxTokens, temperature });
+    const answer = response.choices[0]?.message?.content || 'Yanıt alınamadı.';
 
     await db.tx(async t => {
+      await t.none('INSERT INTO messages(conversation_id,role,content,model,temperature,max_tokens) VALUES($1,$2,$3,$4,$5,$6)', [conversation_id, 'user', message, model, temperature, maxTokens]);
       await t.none('INSERT INTO messages(conversation_id,role,content,model,temperature,max_tokens) VALUES($1,$2,$3,$4,$5,$6)', [conversation_id, 'assistant', answer, model, temperature, maxTokens]);
       await t.none('UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND user_id=$2', [conversation_id, req.user_id]);
     });
-
+    reserved = false;
     const fresh = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     res.json({ answer, credits: fresh.credits, conversation_id });
   } catch (e) {
+    if (reserved) {
+      try { await addCredits(req.user_id, 1, 'AI rezervasyon iadesi'); } catch (refundError) { console.error('Credit refund error:', refundError); }
+    }
     console.error('OpenAI Error:', e);
     res.status(500).json({ error: 'AI isteği başarısız oldu.' });
   }
@@ -418,24 +415,20 @@ app.get('/api/conversations/:id/export', auth, async (req, res) => {
     const conv = await ownedConversation(req.user_id, convId);
     if (!conv) return res.status(404).json({ error: 'المحادثة غير موجودة.' });
     const messages = await db.any('SELECT role,content,created_at FROM messages WHERE conversation_id=$1 ORDER BY id ASC', [convId]);
-    res.json({ title: conv.title, exported_at: new Date().toISOString(), messages });
+    res.json({ conversation: conv, messages });
   } catch {
-    res.status(500).json({ error: 'خطأ في التصدير' });
+    res.status(500).json({ error: 'Dışa aktarma başarısız.' });
   }
 });
 
 app.get('/api/search/:query', auth, async (req, res) => {
   try {
-    const query = `%${String(req.params.query || '').slice(0, 100)}%`;
-    const results = await db.any(`
-      SELECT DISTINCT c.id,c.title,c.created_at
-      FROM conversations c LEFT JOIN messages m ON c.id=m.conversation_id
-      WHERE c.user_id=$1 AND (c.title ILIKE $2 OR m.content ILIKE $2)
-      ORDER BY c.updated_at DESC LIMIT 20
-    `, [req.user_id, query]);
-    res.json({ results });
+    const query = String(req.params.query || '').trim().slice(0, 200);
+    if (!query) return res.json({ results: [] });
+    const rows = await db.any(`SELECT m.id,m.conversation_id,m.role,m.content,m.created_at,c.title FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.user_id=$1 AND m.content ILIKE $2 ORDER BY m.id DESC LIMIT 50`, [req.user_id, `%${query}%`]);
+    res.json({ results: rows });
   } catch {
-    res.status(500).json({ error: 'خطأ في البحث' });
+    res.status(500).json({ error: 'Arama başarısız.' });
   }
 });
 
@@ -450,33 +443,33 @@ app.delete('/api/conversations/:id', auth, async (req, res) => {
     });
     res.json({ ok: true });
   } catch {
-    res.status(500).json({ error: 'خطأ في الحذف' });
+    res.status(500).json({ error: 'Silme başarısız.' });
   }
 });
 
 app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
   try {
-    const [users, paid, credits, usage] = await Promise.all([
-      db.one('SELECT COUNT(*) AS c FROM users'),
-      db.one("SELECT COUNT(*) AS c FROM users WHERE plan!='free'"),
-      db.one('SELECT COALESCE(SUM(credits),0) AS c FROM users'),
-      db.one("SELECT COALESCE(SUM(-amount),0) AS c FROM credit_ledger WHERE amount<0")
+    const [users, revenue, recent] = await Promise.all([
+      db.one('SELECT COUNT(*)::int AS count FROM users'),
+      db.one('SELECT COALESCE(SUM(amount),0)::int AS credits_added FROM credit_ledger WHERE amount>0'),
+      db.any('SELECT id,name,email,plan,credits,created_at FROM users ORDER BY id DESC LIMIT 20')
     ]);
-    res.json({ stats: { users: users.c, paid: paid.c, credits: credits.c, usage: usage.c, revenue: 0 } });
+    res.json({ users: users.count, credits_added: revenue.credits_added, recent });
   } catch {
-    res.status(500).json({ error: 'خطأ في جلب الإحصائيات' });
+    res.status(500).json({ error: 'Admin verileri alınamadı.' });
   }
 });
 
-app.get('/{*splat}', (req, res) => res.sendFile(process.cwd() + '/index.html'));
+app.use('/api', (req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
+app.get('/{*splat}', (req, res) => res.sendFile('index.html', { root: process.cwd() }));
 
+const PORT = Number(process.env.PORT || 3000);
 async function start() {
   await initializeDatabase();
   await createAdminIfNotExists();
-  app.listen(process.env.PORT || 3000, () => console.log(`✅ STAR AI: http://localhost:${process.env.PORT || 3000}`));
+  app.listen(PORT, () => console.log(`STAR AI running on port ${PORT}`));
 }
-
-start().catch(error => {
-  console.error('❌ خطأ في بدء التطبيق:', error);
+start().catch(err => {
+  console.error('Startup failed:', err);
   process.exit(1);
 });
