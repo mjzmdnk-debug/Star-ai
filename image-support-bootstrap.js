@@ -16,7 +16,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 
   const prompt = String(req.body?.prompt || '').trim().slice(0, 12000);
   const imageData = String(req.body?.image_data || '').trim();
-  const match = imageData.match(/^data:(image\\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  const match = imageData.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!prompt) return res.status(400).json({ error: 'اكتب وصف التعديل المطلوب.' });
   if (!match) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
   if (imageData.length > 7000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
@@ -40,18 +40,17 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 
     const { toFile } = await import('openai');
     const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/webp' ? 'webp' : 'jpg';
-    const imageFile = await toFile(imageBuffer, \`star-ai-source.\${ext}\`, { type: imageMime });
+    const imageFile = await toFile(imageBuffer, `star-ai-source.${ext}`, { type: imageMime });
     const edit = await openai.images.edit({
       model: 'gpt-image-2',
       image: imageFile,
-      prompt: \`Edit the supplied image according to this instruction: \${prompt}. Preserve the person's identity, composition, camera perspective, and every detail not explicitly requested to change. Make only the requested changes and keep everything else as close to the original as possible.\`,
-      quality: 'medium',
-      input_fidelity: 'high'
+      prompt: `Edit the supplied image according to this instruction: ${prompt}. Preserve the person's identity, composition, camera perspective, and every detail not explicitly requested to change. Make only the requested changes and keep everything else as close to the original as possible.`,
+      quality: 'medium'
     });
 
     const b64 = edit?.data?.[0]?.b64_json;
     if (!b64) throw new Error('EMPTY_IMAGE_RESULT');
-    const resultDataUrl = \`data:image/png;base64,\${b64}\`;
+    const resultDataUrl = `data:image/png;base64,${b64}`;
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
     return res.json({ ok: true, image: resultDataUrl, credits: credits.credits, cost: IMAGE_EDIT_COST });
