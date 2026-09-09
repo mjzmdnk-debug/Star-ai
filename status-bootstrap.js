@@ -22,3 +22,4 @@ await import('./ui-design-bootstrap.js');
 await import('./asset-serving-bootstrap.js');
 await import('./image-support-bootstrap.js');
 await import('./landing-premium-bootstrap.js');
+await import('./chat-pro-bootstrap.js');
