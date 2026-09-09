@@ -37,7 +37,6 @@ if (!dashboard.includes('STAR_AI_CHAT_PRO_V1')) {
     const form = document.getElementById('chat');
     const input = document.getElementById('message');
     const fileInput = document.getElementById('imageInput');
-    const preview = document.getElementById('imagePreview');
     const messages = document.getElementById('messagesInner');
     const send = document.getElementById('sendButton');
     if (!form || !input || !fileInput || !messages) return;
@@ -89,4 +88,3 @@ if (!dashboard.includes('STAR_AI_CHAT_PRO_V1')) {
   fs.writeFileSync(dashboardFile,dashboard);
 }
 console.log('STAR_AI_CHAT_PRO_V1 enabled.');
-await import('./server.js');
