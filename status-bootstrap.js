@@ -25,3 +25,4 @@ await import('./image-support-bootstrap.js');
 await import('./landing-premium-bootstrap.js');
 await import('./turkish-icons-bootstrap.js');
 await import('./professional-ai-engine-bootstrap.js');
+await import('./live-research-bootstrap.js');
