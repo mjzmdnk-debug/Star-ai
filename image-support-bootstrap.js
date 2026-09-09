@@ -25,9 +25,9 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
   const header = separator > 0 ? imageData.slice(0, separator) : '';
   const payload = separator > 0 ? imageData.slice(separator + 1) : '';
   const allowedHeader = header === 'data:image/jpeg;base64' || header === 'data:image/jpg;base64' || header === 'data:image/png;base64' || header === 'data:image/webp;base64';
-  if (!prompt) return res.status(400).json({ error: 'اكتب وصف التعديل المطلوب.' });
-  if (!allowedHeader || !payload || !/^[A-Za-z0-9+/=]+$/.test(payload)) return res.status(400).json({ error: 'الصورة غير صالحة. استخدم JPG أو PNG أو WEBP.' });
-  if (imageData.length > 7000000) return res.status(400).json({ error: 'حجم الصورة كبير جداً. اختر صورة أصغر.' });
+  if (!prompt) return res.status(400).json({ error: 'İstediğiniz görsel düzenlemesini yazın.' });
+  if (!allowedHeader || !payload || !/^[A-Za-z0-9+/=]+$/.test(payload)) return res.status(400).json({ error: 'Görsel geçersiz. JPG, PNG veya WEBP kullanın.' });
+  if (imageData.length > 7000000) return res.status(400).json({ error: 'Görsel çok büyük. Daha küçük bir görsel seçin.' });
   const IMAGE_EDIT_COST = 5;
   let reserved = false;
   try {
@@ -101,18 +101,18 @@ const enhancementScript = String.raw`
     document.head.appendChild(style);
     const tools = document.createElement('div');
     tools.className = 'star-image-tools';
-    tools.innerHTML = '<button type="button" class="star-image-tool active" data-mode="edit">✦ تعديل الصورة</button><button type="button" class="star-image-tool" data-mode="analyze">◉ تحليل الصورة</button>';
+    tools.innerHTML = '<button type="button" class="star-image-tool active" data-mode="edit">✦ Görseli düzenle</button><button type="button" class="star-image-tool" data-mode="analyze">◉ Görsel analizi</button>';
     info.appendChild(tools);
     tools.querySelectorAll('[data-mode]').forEach(function (button) { button.addEventListener('click', function () { imageMode = button.dataset.mode; tools.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('active', b === button); }); }); });
     const composerWrap = form.parentElement;
     const quick = document.createElement('div');
     quick.className = 'star-quick-tools';
-    quick.innerHTML = '<button type="button" class="star-quick-tool">✨ تحسين النص</button><button type="button" class="star-quick-tool">💡 أفكار</button><button type="button" class="star-quick-tool">📝 تلخيص</button><button type="button" class="star-quick-tool">🌐 ترجمة</button>';
+    quick.innerHTML = '<button type="button" class="star-quick-tool">✨ Metni iyileştir</button><button type="button" class="star-quick-tool">💡 Fikirler</button><button type="button" class="star-quick-tool">📝 Özetle</button><button type="button" class="star-quick-tool">🌐 Çevir</button>';
     composerWrap.insertBefore(quick, preview);
-    quick.querySelectorAll('button').forEach(function (button) { button.addEventListener('click', function () { const label = button.textContent || ''; const prompts = {'✨ تحسين النص':'حسّن صياغة النص التالي واجعله أوضح وأجمل مع الحفاظ على المعنى:','💡 أفكار':'اقترح لي أفكاراً عملية ومبتكرة حول:','📝 تلخيص':'لخّص النص التالي في نقاط واضحة ومختصرة:','🌐 ترجمة':'ترجم النص التالي إلى العربية ترجمة طبيعية ودقيقة:'}; input.value = (prompts[label] || '') + (input.value ? ' ' + input.value : ''); input.focus(); }); });
+    quick.querySelectorAll('button').forEach(function (button) { button.addEventListener('click', function () { const label = button.textContent || ''; const prompts = {'✨ Metni iyileştir':'Aşağıdaki metni anlamını koruyarak daha açık, akıcı ve profesyonel hale getir:','💡 Fikirler':'Şu konu hakkında pratik ve yaratıcı fikirler öner:','📝 Özetle':'Aşağıdaki metni açık ve kısa maddeler halinde özetle:','🌐 Çevir':'Aşağıdaki metni doğal ve doğru bir şekilde Türkçeye çevir:'}; input.value = (prompts[label] || '') + (input.value ? ' ' + input.value : ''); input.focus(); }); });
     function setCredits(value) { if (credits && value !== undefined) credits.textContent = String(value); if (creditsSide && value !== undefined) creditsSide.textContent = String(value); }
     function readFile(file) { return new Promise(function (resolve, reject) { const reader = new FileReader(); reader.onload = function () { resolve(String(reader.result || '')); }; reader.onerror = reject; reader.readAsDataURL(file); }); }
-    function addResult(imageUrl, prompt) { const box = document.createElement('div'); box.className = 'msg ai'; const label = document.createElement('div'); label.className = 'star-result-label'; label.textContent = '✦ تم تعديل الصورة'; const image = document.createElement('img'); image.className = 'message-image'; image.src = imageUrl; image.alt = prompt || 'Düzenlenmiş görsel'; box.appendChild(label); box.appendChild(image); messages.appendChild(box); const scroller = document.getElementById('messages'); if (scroller) scroller.scrollTop = scroller.scrollHeight; }
+    function addResult(imageUrl, prompt) { const box = document.createElement('div'); box.className = 'msg ai'; const label = document.createElement('div'); label.className = 'star-result-label'; label.textContent = '✦ Görsel düzenlendi'; const image = document.createElement('img'); image.className = 'message-image'; image.src = imageUrl; image.alt = prompt || 'Düzenlenmiş görsel'; box.appendChild(label); box.appendChild(image); messages.appendChild(box); const scroller = document.getElementById('messages'); if (scroller) scroller.scrollTop = scroller.scrollHeight; }
     function showError(text) { const box = document.createElement('div'); box.className = 'msg ai star-error'; box.textContent = text; messages.appendChild(box); const scroller = document.getElementById('messages'); if (scroller) scroller.scrollTop = scroller.scrollHeight; }
     form.addEventListener('submit', async function (event) {
       if (imageMode !== 'edit' || !fileInput.files || !fileInput.files[0]) return;
@@ -121,7 +121,7 @@ const enhancementScript = String.raw`
       if (sendButton) sendButton.disabled = true;
       const file = fileInput.files[0];
       const prompt = String(input.value || '').trim();
-      if (!prompt) { showError('اكتب أولاً ما تريد تغييره في الصورة، مثلاً: كبر العضلات بشكل طبيعي مع الحفاظ على الوجه والخلفية.'); if (sendButton) sendButton.disabled = false; input.focus(); return; }
+      if (!prompt) { showError('Önce görselde neyi değiştirmek istediğinizi yazın. Örneğin: Kasları doğal görünecek şekilde belirginleştirirken yüzü ve arka planı koru.'); if (sendButton) sendButton.disabled = false; input.focus(); return; }
       try {
         const imageData = await readFile(file);
         const userBox = document.createElement('div'); userBox.className = 'msg user';
@@ -129,12 +129,12 @@ const enhancementScript = String.raw`
         const caption = document.createElement('div'); caption.textContent = prompt; userBox.appendChild(caption); messages.appendChild(userBox);
         const response = await fetch('/api/image-edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ image_data: imageData, prompt: prompt }) });
         const data = await response.json().catch(function () { return {}; });
-        if (!response.ok) throw new Error(data.error || ('Image edit failed (' + response.status + ')'));
-        if (!data.image) throw new Error('لم تصل صورة من خادم التعديل.');
+        if (!response.ok) throw new Error(data.error || ('Görsel düzenleme başarısız oldu (' + response.status + ')'));
+        if (!data.image) throw new Error('Düzenleme sunucusundan görsel alınamadı.');
         addResult(data.image, prompt);
         if (data.credits !== undefined) setCredits(data.credits);
         input.value = ''; fileInput.value = ''; if (preview) preview.classList.remove('open');
-      } catch (error) { showError(String(error && error.message ? error.message : 'تعذر الاتصال بخدمة تعديل الصور.')); }
+      } catch (error) { showError(String(error && error.message ? error.message : 'Görsel düzenleme hizmetine bağlanılamadı.')); }
       finally { if (sendButton) sendButton.disabled = false; }
     }, true);
   }
