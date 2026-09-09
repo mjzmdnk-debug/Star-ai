@@ -11,11 +11,11 @@ if (!server.includes('STAR_AI_WEB_RESEARCH_V1')) {
   let endpoint = server.slice(start, end);
 
   const oldCreate = `instructions: SYSTEM_PROMPT,\n        input,\n        max_output_tokens: maxTokens`;
-  const newCreate = `instructions: SYSTEM_PROMPT,\n        input,\n        tools: [{ type: 'web_search', search_context_size: 'high' }],\n        include: ['web_search_call.action.sources'],\n        tool_choice: needsWebResearch ? { type: 'web_search' } : 'auto',\n        max_output_tokens: maxTokens`;
+  const newCreate = `instructions: needsWebResearch ? [SYSTEM_PROMPT, 'Bu istek güncel veya doğrulanması gereken bir araştırma isteğidir. Web aramasını aktif biçimde kullan; mümkünse birden fazla güvenilir kaynağı karşılaştır, birincil ve resmi kaynakları önceliklendir, tarihleri kontrol et ve bulguları kaynaklara dayalı şekilde sentezle. Kaynaklarda çelişki varsa bunu açıkça belirt.'].join(' ') : SYSTEM_PROMPT,\n        input,\n        tools: [{ type: 'web_search', search_context_size: 'high' }],\n        include: ['web_search_call.action.sources'],\n        tool_choice: needsWebResearch ? { type: 'web_search' } : 'auto',\n        max_output_tokens: maxTokens`;
   endpoint = endpoint.replaceAll(oldCreate, newCreate);
 
   const marker = `\n  const preferredModel = model || AI_MODEL;`;
-  const replacement = `\n  const preferredModel = model || AI_MODEL;\n  const researchText = String(message || '').toLowerCase();\n  const needsWebResearch = /(güncel|bugün|şimdi|son dakika|son gelişme|en son|2026|haber|fiyat|kur|borsa|piyasa|maç|skor|takvim|araştır|araştırma|bilimsel|makale|çalışma|kaynak|istatistik|veri|آخر|اليوم|الآن|حديث|أحدث|أخبار|سعر|بحث|دراسة|مصادر|إحصائيات|نتائج|current|today|latest|recent|news|price|market|research|study|paper|source|statistics)/i.test(researchText);`;
+  const replacement = `\n  const preferredModel = model || AI_MODEL;\n  const researchText = String(message || '').toLowerCase();\n  const needsWebResearch = /(güncel|bugün|şimdi|son dakika|son gelişme|en son|2026|haber|fiyat|kur|borsa|piyasa|maç|skor|takvim|araştır|araştırma|bilimsel|makale|çalışma|kaynak|istatistik|veri|آخر|اليوم|الآن|حديث|أحدث|أخبار|سعر|بحث|دراسة|مصادر|إحصائيات|نتائج|مصدر|علمي|مقال|أسعار|سوق|مباراة|ترتيب|إحصاءات|current|today|latest|recent|news|price|market|research|study|paper|source|statistics)/i.test(researchText);`;
   endpoint = endpoint.replace(marker, replacement);
 
   const answerMarker = `    const answer = String(response?.output_text || '').trim();\n    if (!answer) throw new Error('EMPTY_AI_RESPONSE');`;
