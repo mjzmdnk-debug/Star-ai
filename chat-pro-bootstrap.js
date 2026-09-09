@@ -29,7 +29,7 @@ if (!server.includes('STAR_AI_MULTIMODAL_CHAT_V1')) {
 
 let dashboard = fs.readFileSync(dashboardFile, 'utf8');
 if (!dashboard.includes('STAR_AI_CHAT_PRO_V1')) {
-  const script = String.raw`<script data-star-chat-pro="v1">
+  const script = String.raw`<script data-star-chat-pro="STAR_AI_CHAT_PRO_V1">
 (() => {
   function init() {
     if (window.__starChatProReady) return;
@@ -41,12 +41,7 @@ if (!dashboard.includes('STAR_AI_CHAT_PRO_V1')) {
     const send = document.getElementById('sendButton');
     if (!form || !input || !fileInput || !messages) return;
     const style = document.createElement('style');
-    style.textContent = `
-      .star-chat-modes{display:flex;gap:6px;overflow-x:auto;padding:0 2px 7px;scrollbar-width:none}.star-chat-modes::-webkit-scrollbar{display:none}
-      .star-chat-mode{flex:0 0 auto;border:1px solid rgba(168,85,247,.22);border-radius:10px;background:rgba(255,255,255,.025);color:#aaa3b7;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}.star-chat-mode.active,.star-chat-mode:hover{color:#fff;background:rgba(124,60,255,.18);border-color:rgba(168,85,247,.42)}
-      .star-image-hint{display:none;margin:0 0 7px;color:#8c8499;font-size:10px}.star-image-hint.open{display:block}
-      .star-action-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.star-action{border:1px solid rgba(168,85,247,.24);border-radius:9px;background:rgba(124,60,255,.08);color:#c9bcdf;padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer}.star-action:hover{background:rgba(124,60,255,.2);color:#fff}
-    `;
+    style.textContent = '.star-chat-modes{display:flex;gap:6px;overflow-x:auto;padding:0 2px 7px;scrollbar-width:none}.star-chat-modes::-webkit-scrollbar{display:none}.star-chat-mode{flex:0 0 auto;border:1px solid rgba(168,85,247,.22);border-radius:10px;background:rgba(255,255,255,.025);color:#aaa3b7;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}.star-chat-mode.active,.star-chat-mode:hover{color:#fff;background:rgba(124,60,255,.18);border-color:rgba(168,85,247,.42)}.star-image-hint{display:none;margin:0 0 7px;color:#8c8499;font-size:10px}.star-image-hint.open{display:block}.star-action-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.star-action{border:1px solid rgba(168,85,247,.24);border-radius:9px;background:rgba(124,60,255,.08);color:#c9bcdf;padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer}.star-action:hover{background:rgba(124,60,255,.2);color:#fff}';
     document.head.appendChild(style);
     const wrap = form.parentElement;
     const modes = document.createElement('div');
