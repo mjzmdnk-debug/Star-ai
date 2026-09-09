@@ -23,6 +23,7 @@ await import('./asset-serving-bootstrap.js');
 await import('./chat-pro-bootstrap.js');
 await import('./image-support-bootstrap.js');
 await import('./image-analysis-bootstrap.js');
+await import('./mobile-auth-bootstrap.js');
 await import('./landing-premium-bootstrap.js');
 await import('./turkish-icons-bootstrap.js');
 await import('./professional-ai-engine-bootstrap.js');
