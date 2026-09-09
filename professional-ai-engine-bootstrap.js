@@ -37,7 +37,7 @@ if (!server.includes('STAR_AI_PRO_ENGINE_V2')) {
   const end = server.indexOf("\napp.get('/api/admin/overview'", start);
   if (start < 0 || end < 0) throw new Error('STAR_AI_PRO_ENGINE_V2: chat endpoint boundaries not found');
 
-  const newChatEndpoint = String.raw`app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat', getKey: req => \`user:\${req.user_id}\` }), async (req, res) => {
+  const newChatEndpoint = String.raw`app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat', getKey: req => 'user:' + req.user_id }), async (req, res) => {
   if (!openai) return res.status(503).json({ error: 'Yapay zekâ hizmeti şu anda yapılandırılmamış.' });
   const { message, conversationId, model, maxTokens, imageData } = validateChatInput(req.body);
   if (!message && !imageData) return res.status(400).json({ error: 'Bir mesaj veya görsel gönderin.' });
@@ -61,7 +61,7 @@ if (!server.includes('STAR_AI_PRO_ENGINE_V2')) {
     });
 
     const history = await db.any(
-      `SELECT role,content FROM messages WHERE conversation_id=$1 AND role IN ('user','assistant') ORDER BY id DESC LIMIT 24`,
+      'SELECT role,content FROM messages WHERE conversation_id=$1 AND role IN (\'user\',\'assistant\') ORDER BY id DESC LIMIT 24',
       [convId]
     );
     history.reverse();
