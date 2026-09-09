@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'react-native';
 
 export default function RootLayout() {
   return (
     <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#07070a' } }} />
+      <StatusBar barStyle="light-content" backgroundColor="#060608" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#060608' }, animation: 'fade' }} />
     </>
   );
 }
