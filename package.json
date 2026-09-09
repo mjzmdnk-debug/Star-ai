@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node status-bootstrap.js"
+    "start": "node status-bootstrap.js",
+    "check": "node --check server.js && node --check status-bootstrap.js && node --check live-research-bootstrap.js && node --check professional-ai-engine-bootstrap.js && node --check image-support-bootstrap.js && node --check language-selector-bootstrap.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
