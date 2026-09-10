@@ -2,6 +2,18 @@ export const API_BASE_URL = 'https://star-ai-kmfd.onrender.com';
 
 type ApiOptions = RequestInit & { accessToken?: string };
 
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
@@ -14,7 +26,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
   try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || 'Unexpected response' }; }
   if (!response.ok) {
     const message = typeof data === 'object' && data && 'error' in data ? String(data.error) : `Request failed (${response.status})`;
-    throw new Error(message);
+    throw new ApiError(message, response.status, data);
   }
   return data as T;
 }
