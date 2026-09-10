@@ -30,6 +30,9 @@ export async function clearTokens() {
   await SecureStore.deleteItemAsync(REFRESH_KEY);
 }
 
+// Backward-compatible session alias used by the settings screen.
+export const clearSession = clearTokens;
+
 export async function getAccessToken() {
   return SecureStore.getItemAsync(ACCESS_KEY);
 }
