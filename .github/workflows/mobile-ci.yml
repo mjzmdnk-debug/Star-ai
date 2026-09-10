@@ -26,6 +26,10 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --ignore-scripts
+      - name: Verify resolved Expo packages
+        run: |
+          node -e "for (const p of ['expo','expo-router','expo-constants','expo-linking','expo-secure-store','expo-status-bar','expo-image-picker','expo-file-system']) console.log(p, require('./node_modules/'+p+'/package.json').version)"
+          node -e "console.log('typescript', require('./node_modules/typescript/package.json').version)"
       - name: Expo dependency check
         run: npx expo-doctor
       - name: Type check
