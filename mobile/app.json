@@ -6,11 +6,17 @@
     "orientation": "portrait",
     "scheme": "starai",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      ["expo-image-picker", { "photosPermission": "STAR AI needs access to your photos for image analysis.", "cameraPermission": "STAR AI needs camera access for image analysis.", "microphonePermission": false }]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "STAR AI يحتاج الوصول إلى صورك لاختيار صورة للتحليل أو التحرير.",
+          "cameraPermission": "STAR AI يحتاج الوصول إلى الكاميرا لالتقاط صورة للتحليل أو التحرير.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,
