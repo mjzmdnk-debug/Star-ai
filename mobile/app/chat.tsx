@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platfo
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import Animated, { FadeInDown, FadeInUp, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { apiFetch } from '../lib/api';
 import { getAccessToken, getMe, type User } from '../lib/auth';
 import { theme, shadow } from '../lib/theme';
@@ -141,7 +141,6 @@ export default function Chat() {
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        itemLayoutAnimation={LinearTransition.springify().damping(18)}
         ListEmptyComponent={<Animated.View entering={FadeInUp.duration(500).springify()} style={styles.empty}><View style={styles.aiIcon}><Text style={styles.aiIconText}>S</Text></View><Text style={styles.emptyTitle}>{t.title}</Text><Text style={styles.emptyText}>{t.subtitle}</Text><View style={styles.suggestion}><Text style={styles.suggestionText}>{t.newChat}</Text></View></Animated.View>}
         renderItem={({ item, index }) => <Animated.View entering={FadeInUp.delay(Math.min(index * 35, 140)).duration(280)} style={[styles.messageRow, item.role === 'user' && styles.userRow]}>
           <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble]}>
@@ -165,17 +164,7 @@ export default function Chat() {
       <View style={styles.composerWrap}>
         <View style={styles.composer}>
           <Pressable style={({ pressed }) => [styles.toolButton, pressed && styles.pressed]} onPress={() => setShowTools((value) => !value)}><Text style={styles.toolButtonText}>＋</Text></Pressable>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder={t.placeholder}
-            placeholderTextColor={theme.textDim}
-            multiline
-            maxLength={8000}
-            textAlign="right"
-            onSubmitEditing={() => { if (Platform.OS !== 'ios') send(); }}
-          />
+          <TextInput style={styles.input} value={text} onChangeText={setText} placeholder={t.placeholder} placeholderTextColor={theme.textDim} multiline maxLength={8000} textAlign="right" onSubmitEditing={() => { if (Platform.OS !== 'ios') send(); }} />
           <Pressable style={({ pressed }) => [styles.send, pressed && styles.pressed, ((!text.trim() && !selectedImage) || busy || analyzing) && styles.sendDisabled]} onPress={selectedImage ? analyzeImage : send} disabled={busy || analyzing || (!text.trim() && !selectedImage)}><Text style={styles.sendText}>{busy || analyzing ? '…' : '↑'}</Text></Pressable>
         </View>
         <Text style={styles.disclaimer}>{t.disclaimer}</Text>
