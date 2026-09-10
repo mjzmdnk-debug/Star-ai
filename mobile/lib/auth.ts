@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { apiFetch } from './api';
+import { apiFetch, ApiError } from './api';
 
 const ACCESS_KEY = 'star_ai_access_token';
 const REFRESH_KEY = 'star_ai_refresh_token';
@@ -30,7 +30,6 @@ export async function clearTokens() {
   await SecureStore.deleteItemAsync(REFRESH_KEY);
 }
 
-// Backward-compatible session alias used by the settings screen.
 export const clearSession = clearTokens;
 
 export async function getAccessToken() {
@@ -77,7 +76,23 @@ export async function getMe() {
   try {
     const result = await apiFetch<{ ok: boolean; user: User }>('/api/auth/mobile/me', { accessToken });
     return result.user;
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError && error.status !== 401) throw error;
     return refreshSession();
+  }
+}
+
+export async function authenticatedFetch<T>(path: string, options: RequestInit = {}) {
+  const accessToken = await getAccessToken();
+  if (!accessToken) throw new ApiError('Authentication required', 401, null);
+  try {
+    return await apiFetch<T>(path, { ...options, accessToken });
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401) throw error;
+    const refreshedUser = await refreshSession();
+    if (!refreshedUser) throw error;
+    const retryToken = await getAccessToken();
+    if (!retryToken) throw error;
+    return apiFetch<T>(path, { ...options, accessToken: retryToken });
   }
 }
