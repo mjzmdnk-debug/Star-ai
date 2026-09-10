@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { clearSession, getMe, type User } from '../lib/auth';
 import { theme, shadow } from '../lib/theme';
@@ -14,7 +15,13 @@ export default function Settings() {
     getMe().then((value) => { if (!value) router.replace('/login'); else setUser(value); });
   }, [router]);
 
+  async function toggleHaptics(value: boolean) {
+    setHaptics(value);
+    if (value) await Haptics.selectionAsync();
+  }
+
   async function logout() {
+    if (haptics) await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await clearSession();
     router.replace('/login');
   }
@@ -41,7 +48,7 @@ export default function Settings() {
 
       <Animated.View entering={FadeInUp.delay(150).duration(350)} style={styles.card}>
         <Text style={styles.section}>التطبيق</Text>
-        <View style={styles.row}><View><Text style={styles.rowTitle}>الحركة اللمسية</Text><Text style={styles.rowSub}>تحسين الإحساس بالتفاعل داخل التطبيق</Text></View><Switch value={haptics} onValueChange={setHaptics} trackColor={{ false: theme.line, true: '#777' }} thumbColor={theme.white} /></View>
+        <View style={styles.row}><View><Text style={styles.rowTitle}>الحركة اللمسية</Text><Text style={styles.rowSub}>تحسين الإحساس بالتفاعل داخل التطبيق</Text></View><Switch value={haptics} onValueChange={toggleHaptics} trackColor={{ false: theme.line, true: '#777' }} thumbColor={theme.white} /></View>
         <Pressable style={styles.rowButton} onPress={() => router.push('/chat')}><Text style={styles.rowTitle}>المحادثة</Text><Text style={styles.arrow}>‹</Text></Pressable>
       </Animated.View>
 
