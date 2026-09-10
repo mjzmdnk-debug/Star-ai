@@ -6,18 +6,9 @@
     "orientation": "portrait",
     "scheme": "starai",
     "userInterfaceStyle": "dark",
-    "icon": "./assets/images/icon.png",
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#060608",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 180
-        }
-      ],
       [
         "expo-image-picker",
         {
@@ -35,11 +26,7 @@
       }
     },
     "android": {
-      "package": "com.starai.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#060608"
-      }
+      "package": "com.starai.app"
     },
     "web": {
       "bundler": "metro"
