@@ -30,7 +30,10 @@ export default function Index() {
     <View style={styles.container}>
       <View style={styles.glowOne} /><View style={styles.glowTwo} />
       <Animated.View style={[styles.content, { opacity: fade, transform: [{ translateY: rise }] }]}>
-        <View style={styles.topRow}><View style={styles.brandMark}><Text style={styles.brandMarkText}>S</Text></View><Text style={styles.logo}>STAR AI</Text></View>
+        <View style={styles.topRow}>
+          <View style={styles.brandLeft}><View style={styles.brandMark}><Text style={styles.brandMarkText}>S</Text></View><Text style={styles.logo}>STAR AI</Text></View>
+          {user && <Pressable style={styles.settings} onPress={() => router.push('/settings')}><Text style={styles.settingsText}>⚙</Text></Pressable>}
+        </View>
         <View style={styles.hero}>
           <View style={styles.badge}><View style={styles.liveDot} /><Text style={styles.badgeText}>AI • READY</Text></View>
           <Text style={[styles.title, compact && styles.titleCompact]}>Your AI,{"\n"}everywhere.</Text>
@@ -57,10 +60,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 24, paddingTop: 58, paddingBottom: 24, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg },
   content: { flex: 1, justifyContent: 'space-between' },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandMark: { width: 34, height: 34, borderRadius: 10, backgroundColor: theme.white, alignItems: 'center', justifyContent: 'center' },
   brandMarkText: { color: theme.black, fontSize: 18, fontWeight: '900' },
   logo: { color: theme.text, fontSize: 15, fontWeight: '800', letterSpacing: 3 },
+  settings: { width: 42, height: 42, borderRadius: 13, borderWidth: 1, borderColor: theme.line, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center' },
+  settingsText: { color: theme.textMuted, fontSize: 17 },
   hero: { marginTop: 50 },
   badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: theme.line, backgroundColor: '#0b0b0f', borderRadius: 99, paddingHorizontal: 11, paddingVertical: 7 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.white },
