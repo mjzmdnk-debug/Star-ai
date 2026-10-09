@@ -78,4 +78,4 @@ app.get('/api/auth/mobile/me', mobileAuth, async (req, res) => {
   if (server.includes(originalAuth)) server = server.replace(originalAuth, patchedAuth);
   fs.writeFileSync(serverFile, server);
 }
-console.log('STAR AI mobile bearer authentication enabled.');
+console.log('TR AI mobile bearer authentication enabled.');
