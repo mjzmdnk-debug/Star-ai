@@ -39,13 +39,13 @@ const basicId = String(process.env.SHOPIER_PRODUCT_BASIC_ID || '50673465').trim(
 const proId = String(process.env.SHOPIER_PRODUCT_PRO_ID || '50673487').trim();
 const businessId = String(process.env.SHOPIER_PRODUCT_BUSINESS_ID || '').trim();
 const SHOPIER_PRODUCTS = {
-  basic: { id: basicId, name: 'STAR AI Basic', price: 199, credits: 5000, url: `https://shopier.com/${basicId}` },
-  pro: { id: proId, name: 'STAR AI Pro', price: 399, credits: 15000, url: `https://shopier.com/${proId}` },
-  ...(businessId ? { business: { id: businessId, name: 'STAR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${businessId}` } } : {})
+  basic: { id: basicId, name: 'TR AI Basic', price: 199, credits: 5000, url: `https://shopier.com/${basicId}` },
+  pro: { id: proId, name: 'TR AI Pro', price: 399, credits: 15000, url: `https://shopier.com/${proId}` },
+  ...(businessId ? { business: { id: businessId, name: 'TR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${businessId}` } } : {})
 };
 
 const allowedModels = new Set([AI_MODEL, 'gpt-4o-mini']);
-const SYSTEM_PROMPT = 'Sen STAR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.';
+const SYSTEM_PROMPT = 'Sen TR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.';
 
 function parseTrustProxy(value) {
   const raw = String(value ?? '').trim().toLowerCase();
@@ -196,7 +196,7 @@ async function createAdminIfNotExists() {
   if (!existing) {
     const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
     await db.none('INSERT INTO users(name,email,password_hash,plan,credits,role) VALUES($1,$2,$3,$4,$5,$6)',
-      ['STAR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin']);
+      ['TR AI Admin', ADMIN_EMAIL, hash, 'business', 0, 'admin']);
   }
 }
 function validateChatInput(body) {
@@ -353,7 +353,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
       if (inserted.rowCount !== 1) return;
 
       const user = await t.oneOrNone('SELECT id FROM users WHERE email=$1 FOR UPDATE', [order.buyerEmail]);
-      if (!user) throw new Error('STAR AI user not found.');
+      if (!user) throw new Error('TR AI user not found.');
 
       await t.none('UPDATE users SET credits=credits+$1, plan=$2 WHERE id=$3', [product.credits, plan, user.id]);
       await t.none(
@@ -590,7 +590,7 @@ const port = Number(process.env.PORT || 3000);
 initializeDatabase()
   .then(createAdminIfNotExists)
   .then(() => {
-    app.listen(port, () => console.log(`STAR AI running on port ${port}`));
+    app.listen(port, () => console.log(`TR AI running on port ${port}`));
   })
   .catch(error => {
     console.error('Startup error:', error);
