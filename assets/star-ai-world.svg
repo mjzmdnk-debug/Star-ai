@@ -1,42 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
-  <title id="title">TR AI — Turkish Crescent and Star</title>
-  <desc id="desc">Modern Turkish crescent and star emblem with red, white and electric blue neon accents.</desc>
-  <defs>
-    <radialGradient id="bg" cx="35%" cy="25%" r="80%">
-      <stop offset="0" stop-color="#242b82"/>
-      <stop offset=".56" stop-color="#10143d"/>
-      <stop offset="1" stop-color="#050713"/>
-    </radialGradient>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ff647c"/><stop offset=".48" stop-color="#e30b2f"/><stop offset="1" stop-color="#8d001b"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6cf4ff"/><stop offset=".45" stop-color="#2678ff"/><stop offset="1" stop-color="#8a3dff"/>
-    </linearGradient>
-    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
-      <feGaussianBlur stdDeviation="5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="softGlow" x="-70%" y="-70%" width="240%" height="240%">
-      <feGaussianBlur stdDeviation="10"/>
-    </filter>
-    <clipPath id="disc"><circle cx="110" cy="110" r="91"/></clipPath>
-  </defs>
-  <circle cx="110" cy="110" r="106" fill="#050713" stroke="url(#blue)" stroke-width="2.5"/>
-  <circle cx="110" cy="110" r="98" fill="url(#bg)" stroke="#c2e7ff" stroke-opacity=".24" stroke-width="1.5"/>
-  <circle cx="110" cy="110" r="91" fill="none" stroke="url(#blue)" stroke-width="2" opacity=".75"/>
-  <g clip-path="url(#disc)" fill="none" stroke-linecap="round">
-    <path d="M-10 155 C43 89 93 49 151 47 S213 68 241 88" stroke="url(#blue)" stroke-width="8" opacity=".8" filter="url(#glow)"/>
-    <path d="M-12 177 C50 116 100 78 151 76 S214 94 240 116" stroke="#f7fbff" stroke-width="2" opacity=".65"/>
-    <path d="M18 225 C60 160 94 129 137 105 S196 81 229 90" stroke="url(#blue)" stroke-width="5" opacity=".75"/>
-    <path d="M44 -10 C68 47 86 80 119 109" stroke="#dceaff" stroke-width="1.5" opacity=".24"/>
-  </g>
-  <circle cx="104" cy="105" r="58" fill="#ff163e" opacity=".36" filter="url(#softGlow)"/>
-  <g filter="url(#glow)">
-    <circle cx="91" cy="104" r="66" fill="#fff" opacity=".96"/>
-    <circle cx="116" cy="88" r="57" fill="url(#red)"/>
-    <path d="M158 73 L167 93 L189 94 L172 108 L178 130 L158 118 L138 130 L144 108 L127 94 L149 93 Z" fill="#fff" stroke="#eaf8ff" stroke-width="1"/>
-  </g>
-  <circle cx="110" cy="110" r="96" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1"/>
-  <circle cx="110" cy="110" r="102" fill="none" stroke="url(#blue)" stroke-width="2" opacity=".7"/>
+<title id="title">TR AI — Dynamic Crescent</title>
+<desc id="desc">A polished Turkish crescent and star with aerodynamic red and electric blue energy trails.</desc>
+<defs>
+ <radialGradient id="bg" cx="38%" cy="32%" r="80%"><stop stop-color="#19234f"/><stop offset=".58" stop-color="#080d22"/><stop offset="1" stop-color="#03050d"/></radialGradient>
+ <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffb5bd"/><stop offset=".22" stop-color="#ff334f"/><stop offset=".62" stop-color="#d9002b"/><stop offset="1" stop-color="#650018"/></linearGradient>
+ <linearGradient id="white" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff"/><stop offset=".48" stop-color="#dceaff"/><stop offset="1" stop-color="#8498c8"/></linearGradient>
+ <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6ef7ff"/><stop offset=".45" stop-color="#147bff"/><stop offset="1" stop-color="#6d3dff"/></linearGradient>
+ <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="blur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8"/></filter>
+ <clipPath id="disc"><circle cx="110" cy="110" r="101"/></clipPath>
+</defs>
+<circle cx="110" cy="110" r="107" fill="#040713" stroke="url(#blue)" stroke-width="2"/>
+<circle cx="110" cy="110" r="101" fill="url(#bg)" stroke="#a6d7ff" stroke-opacity=".24"/>
+<g clip-path="url(#disc)" fill="none" stroke-linecap="round">
+ <path d="M-18 108 C38 66 79 44 120 45 C158 45 191 59 239 82" stroke="#ff153d" stroke-width="15" opacity=".6" filter="url(#blur)"/>
+ <path d="M-16 106 C38 64 79 42 120 43 C158 43 191 57 239 80" stroke="url(#red)" stroke-width="7" filter="url(#glow)"/>
+ <path d="M-22 140 C32 105 72 89 111 89 C154 89 197 105 241 132" stroke="url(#blue)" stroke-width="8" filter="url(#glow)"/>
+ <path d="M-16 156 C40 124 76 110 116 112 C161 114 194 131 237 153" stroke="#75eaff" stroke-width="2.2" opacity=".85"/>
+ <path d="M-12 81 C42 45 80 29 121 31 C167 33 203 50 238 67" stroke="#ff6377" stroke-width="2" opacity=".75"/>
+</g>
+<g filter="url(#glow)">
+ <path d="M105 42 A66 66 0 1 0 161 146 A52 52 0 1 1 105 42 Z" fill="url(#white)" stroke="#fff" stroke-width="1.5"/>
+ <path d="M105 42 A66 66 0 1 0 161 146 A52 52 0 1 1 105 42 Z" fill="none" stroke="url(#red)" stroke-width="3"/>
+ <path d="M157 75 L166 96 L189 97 L171 111 L177 134 L157 121 L137 134 L143 111 L125 97 L148 96 Z" fill="url(#white)" stroke="#fff" stroke-width="1.5"/>
+</g>
+<circle cx="110" cy="110" r="102" fill="none" stroke="#d6f3ff" stroke-opacity=".22"/>
 </svg>
