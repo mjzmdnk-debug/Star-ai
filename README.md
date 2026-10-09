@@ -52,10 +52,11 @@ npm start
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `TRUST_PROXY` — اختياري. إذا لم تضبطه، يستخدم التطبيق `0` محليًا و`1` تلقائيًا عند اكتشاف Render. اضبطه صراحة إذا كانت بنية الـProxy مختلفة.
-- `SHOPIER_WEBHOOK_SECRET` — هنا يتم وضع **Webhook Token** الذي يوفره Shopier لإنشاء/إدارة webhook، وليس سرًا عشوائيًا مخصصًا للرأس.
-- `SHOPIER_PRODUCT_BASIC_ID`
-- `SHOPIER_PRODUCT_PRO_ID`
-- `SHOPIER_PRODUCT_BUSINESS_ID` — اختياري، وعند ضبطه فقط يصبح Business متاحًا
+- `SHOPIER_PAT` — Personal Access Token الخاص بـ Shopier API. احتفظ به في Render Environment Variables فقط؛ لا تضعه في GitHub أو الواجهة الأمامية.
+- `SHOPIER_WEBHOOK_SECRET` أو `SHOPIER_WEBHOOK_TOKEN` — رمز التحقق الخاص بـ Webhook. وهو مختلف عن Personal Access Token؛ لا تضع PAT هنا إلا إذا نصّت إعدادات Shopier صراحةً على أنه رمز Webhook.
+- `SHOPIER_PRODUCT_BASIC_ID=50673465` — Basic، بسعر 199 TL ويمنح 5,000 kredi.
+- `SHOPIER_PRODUCT_PRO_ID=50673487` — Pro، بسعر 399 TL ويمنح 15,000 kredi.
+- `SHOPIER_PRODUCT_BUSINESS_ID` — اختياري؛ Business بسعر 799 TL ويمنح 30,000 kredi، ولا يتاح قبل ضبط معرّف المنتج.
 
 ## Shopier Webhook
 العنوان:
