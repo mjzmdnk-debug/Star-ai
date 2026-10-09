@@ -38,7 +38,8 @@ if (!dashboard.includes('STAR_AI_LANGUAGE_SELECTOR_V1')) {
     });
     const small = document.querySelector('.credit-mini small'); if (small) small.textContent = t.credits;
     const online = document.querySelector('.chat-title small'); if (online) online.innerHTML = '<span class="online-dot"></span>' + t.online;
-    const welcome = document.querySelector('.welcome h1'); if (welcome) welcome.textContent = t.welcome;\n    const headerTitle = document.querySelector('.chat-title b'); if (headerTitle) headerTitle.textContent = lang === 'ar' ? 'مساعد STAR AI' : lang === 'en' ? 'STAR AI Assistant' : 'STAR AI Assistant';
+    const welcome = document.querySelector('.welcome h1'); if (welcome) welcome.textContent = t.welcome;
+    const headerTitle = document.querySelector('.chat-title b'); if (headerTitle) headerTitle.textContent = lang === 'ar' ? 'مساعد STAR AI' : lang === 'en' ? 'STAR AI Assistant' : 'STAR AI Assistant';
     const welcomeSub = document.querySelector('.welcome p'); if (welcomeSub) welcomeSub.textContent = t.welcomeSub;
     const input = get('message'); if (input) input.placeholder = t.placeholder;
     const previewName = get('previewName'); if (previewName) previewName.textContent = t.selected;
