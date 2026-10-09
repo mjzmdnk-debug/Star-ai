@@ -9,8 +9,8 @@ if (!dashboard.includes('STAR_AI_LANGUAGE_SELECTOR_V1')) {
 (() => {
   const translations = {
     tr: { name: 'Türkçe', newChat: 'Yeni sohbet', chats: 'SOHBETLER', credits: 'Kalan kredi', logout: 'Çıkış', online: 'Çevrimiçi • Hızlı yanıt', welcome: 'Bugün sana nasıl yardımcı olabilirim?', welcomeSub: 'Bir soru sor, fikir üret veya birlikte bir şeyler oluşturalım.', placeholder: "STAR AI'a bir mesaj yazın…", selected: 'Görsel seçildi', imageInfo: 'STAR AI bu görseli analiz edebilir.', remove: 'Görseli kaldır', imageEdit: 'Görseli düzenle', imageAnalyze: 'Görsel analizi', improve: 'Metni iyileştir', ideas: 'Fikirler', summary: 'Özetle', translate: 'Çevir', language: 'Dil' },
-    en: { name: 'English', newChat: 'New chat', chats: 'CHATS', credits: 'Remaining credits', logout: 'Log out', online: 'Online • Fast response', welcome: 'How can I help you today?', welcomeSub: 'Ask a question, generate an idea, or let’s create something together.', placeholder: 'Write a message to STAR AI…', selected: 'Image selected', imageInfo: 'STAR AI can analyze this image.', remove: 'Remove image', imageEdit: 'Edit image', imageAnalyze: 'Image analysis', improve: 'Improve text', ideas: 'Ideas', summary: 'Summarize', translate: 'Translate', language: 'Language' },
-    ar: { name: 'العربية', newChat: 'محادثة جديدة', chats: 'المحادثات', credits: 'الرصيد المتبقي', logout: 'تسجيل الخروج', online: 'متصل • استجابة سريعة', welcome: 'كيف يمكنني مساعدتك اليوم؟', welcomeSub: 'اطرح سؤالاً، أنشئ فكرة، أو لننشئ شيئاً معاً.', placeholder: 'اكتب رسالة إلى STAR AI…', selected: 'تم اختيار الصورة', imageInfo: 'يمكن لـ STAR AI تحليل هذه الصورة.', remove: 'إزالة الصورة', imageEdit: 'تعديل الصورة', imageAnalyze: 'تحليل الصورة', improve: 'تحسين النص', ideas: 'أفكار', summary: 'تلخيص', translate: 'ترجمة', language: 'اللغة' }
+    en: { name: 'English', newChat: 'New chat', chats: 'CHATS', credits: 'Remaining credits', logout: 'Log out', online: 'Online • Fast response', welcome: 'How can I help you today?', welcomeSub: 'Ask a question, generate an idea, or let’s create something together.', placeholder: 'Write a message to STAR AI…', selected: 'Image selected', imageInfo: 'STAR AI can analyze this image.', remove: 'Remove image', imageEdit: 'Edit image', imageAnalyze: 'Image analysis', improve: 'Improve text', ideas: 'Ideas', summary: 'Summarize', translate: 'Translate', language: 'Language', tools: 'AI TOOLS', photoEdit: 'Photo editing', photoEditSub: 'Edit and enhance photos', photoAnalyze: 'Photo analysis', photoAnalyzeSub: 'Analyze images in detail', textImprove: 'Text improvement', textImproveSub: 'Write more professionally', translateSub: 'Translate quickly and accurately', summarizeSub: 'Summarize text', ideasSub: 'Generate creative ideas', logout: 'Log out', newChat: 'New chat' },
+    ar: { name: 'العربية', newChat: 'محادثة جديدة', chats: 'المحادثات', credits: 'الرصيد المتبقي', logout: 'تسجيل الخروج', online: 'متصل • استجابة سريعة', welcome: 'كيف يمكنني مساعدتك اليوم؟', welcomeSub: 'اطرح سؤالاً، أنشئ فكرة، أو لننشئ شيئاً معاً.', placeholder: 'اكتب رسالة إلى STAR AI…', selected: 'تم اختيار الصورة', imageInfo: 'يمكن لـ STAR AI تحليل هذه الصورة.', remove: 'إزالة الصورة', imageEdit: 'تعديل الصورة', imageAnalyze: 'تحليل الصورة', improve: 'تحسين النص', ideas: 'أفكار', summary: 'تلخيص', translate: 'ترجمة', language: 'اللغة', tools: 'أدوات الذكاء الاصطناعي', photoEdit: 'تعديل الصور', photoEditSub: 'تعديل الصور وتحسينها', photoAnalyze: 'تحليل الصور', photoAnalyzeSub: 'تحليل الصور بالتفصيل', textImprove: 'تحسين النص', textImproveSub: 'اكتب بطريقة أكثر احترافية', translateSub: 'ترجمة سريعة ودقيقة', summarizeSub: 'تلخيص النصوص', ideasSub: 'إنشاء أفكار إبداعية', logout: 'تسجيل الخروج', newChat: 'محادثة جديدة' }
   };
   const get = id => document.getElementById(id);
   function applyLanguage(lang) {
@@ -19,9 +19,26 @@ if (!dashboard.includes('STAR_AI_LANGUAGE_SELECTOR_V1')) {
     const setText = (id, value) => { const el = get(id); if (el) el.textContent = value; };
     setText('newChat', t.newChat); setText('logout', t.logout);
     const label = document.querySelector('.sidebar-label'); if (label) label.textContent = t.chats;
+    const toolLabel = document.querySelector('.star-side-title, .sidebar-label.tools-label'); if (toolLabel) toolLabel.textContent = t.tools || 'AI TOOLS';
+    const sideTools = [...document.querySelectorAll('.star-side-tool')];
+    const sideNames = [t.photoEdit, t.photoAnalyze, t.textImprove, t.translate, t.summary, t.ideas];
+    const sideSubs = [t.photoEditSub, t.photoAnalyzeSub, t.textImproveSub, t.translateSub, t.summarizeSub, t.ideasSub];
+    sideTools.forEach((btn, i) => {
+      const title = btn.querySelector('b'); if (title && sideNames[i]) title.textContent = sideNames[i];
+      const sub = btn.querySelector('small'); if (sub && sideSubs[i]) sub.textContent = sideSubs[i];
+    });
+    document.querySelectorAll('.star-chat-mode').forEach(btn => {
+      const mode = btn.dataset.mode;
+      const labels = {chat: lang === 'ar' ? '✦ محادثة' : lang === 'en' ? '✦ Chat' : '✦ Sohbet', analyze: '◉ ' + t.imageAnalyze, edit: '✎ ' + t.imageEdit, add: lang === 'ar' ? '＋ إضافة إلى الصورة' : lang === 'en' ? '＋ Add to image' : '＋ Görsele ekle'};
+      if (labels[mode]) btn.textContent = labels[mode];
+    });
+    document.querySelectorAll('.star-action').forEach((btn, i) => {
+      const labels = lang === 'ar' ? ['تحسين الصورة','إزالة عنصر','تغيير الخلفية','إضافة عنصر','تحسين النص','تلخيص'] : lang === 'en' ? ['Enhance image','Remove object','Change background','Add object','Improve text','Summarize'] : ['Görseli iyileştir','Nesneyi kaldır','Arka planı değiştir','Nesne ekle','Metni iyileştir','Özetle'];
+      if (labels[i]) btn.textContent = labels[i];
+    });
     const small = document.querySelector('.credit-mini small'); if (small) small.textContent = t.credits;
     const online = document.querySelector('.chat-title small'); if (online) online.innerHTML = '<span class="online-dot"></span>' + t.online;
-    const welcome = document.querySelector('.welcome h1'); if (welcome) welcome.textContent = t.welcome;
+    const welcome = document.querySelector('.welcome h1'); if (welcome) welcome.textContent = t.welcome;\n    const headerTitle = document.querySelector('.chat-title b'); if (headerTitle) headerTitle.textContent = lang === 'ar' ? 'مساعد STAR AI' : lang === 'en' ? 'STAR AI Assistant' : 'STAR AI Assistant';
     const welcomeSub = document.querySelector('.welcome p'); if (welcomeSub) welcomeSub.textContent = t.welcomeSub;
     const input = get('message'); if (input) input.placeholder = t.placeholder;
     const previewName = get('previewName'); if (previewName) previewName.textContent = t.selected;
