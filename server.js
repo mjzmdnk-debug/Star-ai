@@ -34,6 +34,7 @@ const PLANS = {
   business: { name: 'Business', price: 799, credits: 30000 }
 };
 
+const SHOPIER_PAT = String(process.env.SHOPIER_PAT || process.env.SHOPIER_ACCESS_TOKEN || '').trim();
 const basicId = String(process.env.SHOPIER_PRODUCT_BASIC_ID || '50673465').trim();
 const proId = String(process.env.SHOPIER_PRODUCT_PRO_ID || '50673487').trim();
 const businessId = String(process.env.SHOPIER_PRODUCT_BUSINESS_ID || '').trim();
@@ -248,15 +249,15 @@ function extractOrder(body) {
   ) || '').trim().toLowerCase();
   const currency = String(firstValue(order?.currency, order?.currencyCode, body?.currency, findNestedValue(body, ['currency', 'currencyCode'])) || 'TRY').trim().toUpperCase();
   const amountRaw = firstValue(
-    order?.total, order?.totalAmount, order?.amount, order?.grandTotal, body?.amount, body?.total,
-    findNestedValue(body, ['total_amount', 'totalAmount', 'grand_total'])
+    order?.total, order?.totalAmount, order?.totalPrice, order?.paidAmount, order?.price, order?.amount, order?.grandTotal, body?.amount, body?.total, body?.totalPrice,
+    findNestedValue(body, ['total_amount', 'totalAmount', 'grand_total', 'paid_amount', 'paidAmount', 'total_price'])
   );
   const amount = Number(amountRaw);
   const items = firstValue(order?.lineItems, order?.line_items, order?.items, body?.lineItems, body?.line_items, body?.items);
   let productId = '';
   const list = Array.isArray(items) ? items : [];
   for (const item of list) {
-    productId = String(firstValue(item?.productId, item?.product_id, item?.id, item?.product?.id) || '').trim();
+    productId = String(firstValue(item?.productId, item?.product_id, item?.product?.id) || '').trim();
     if (productId) break;
   }
   if (!productId) productId = String(firstValue(order?.productId, order?.product_id, body?.productId, body?.product_id, findNestedValue(body, ['product_id', 'productId'])) || '').trim();
@@ -294,7 +295,9 @@ app.get('/api/health', async (req, res) => {
     ok: database,
     database,
     aiConfigured: Boolean(openai),
-    paymentConfigured: Boolean(process.env.SHOPIER_WEBHOOK_SECRET),
+    paymentConfigured: Boolean(String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim() && basicId && proId),
+    shopierApiConfigured: Boolean(SHOPIER_PAT),
+    shopierWebhookConfigured: Boolean(String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim()),
     model: AI_MODEL,
     environment: isProduction ? 'production' : 'development'
   });
@@ -309,7 +312,7 @@ app.post('/api/billing/checkout', auth, rateLimit({ windowMs: 60000, max: 20, sc
 
 app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'webhook' }), async (req, res) => {
   try {
-    const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || '').trim();
+    const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim();
     if (!secret) return res.status(503).json({ error: 'Webhook token is not configured.' });
     const received = String(req.get('Shopier-Signature') || '').trim();
     const rawBody = Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(JSON.stringify(req.body || {}));
@@ -328,6 +331,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     if (!order.orderId) return res.status(400).json({ error: 'Order ID missing.' });
     if (!isPaidStatus(order.status)) return res.status(200).json({ ok: true, paymentStatus: order.status || 'unknown' });
     if (!order.buyerEmail) return res.status(400).json({ error: 'Buyer email missing.' });
+    if (order.currency !== 'TRY') return res.status(400).json({ error: 'Unsupported payment currency.' });
 
     let plan = null;
     for (const [candidate, product] of Object.entries(SHOPIER_PRODUCTS)) {
@@ -335,6 +339,10 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     }
     if (!plan) return res.status(400).json({ error: 'Product not recognized.' });
     const product = SHOPIER_PRODUCTS[plan];
+    if (order.amount === null || Math.abs(order.amount - product.price) > 0.01) {
+      console.warn('Shopier payment amount mismatch:', { orderId: order.orderId, plan, receivedAmount: order.amount });
+      return res.status(400).json({ error: 'Payment amount does not match the selected plan.' });
+    }
     const eventRef = `shopier-order-${order.orderId}`;
 
     await db.tx(async t => {
