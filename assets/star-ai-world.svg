@@ -33,9 +33,9 @@
   </g>
   <circle cx="104" cy="105" r="58" fill="#ff163e" opacity=".36" filter="url(#softGlow)"/>
   <g filter="url(#glow)">
-    <circle cx="96" cy="101" r="48" fill="#fff" opacity=".96"/>
-    <circle cx="115" cy="89" r="42" fill="url(#red)"/>
-    <path d="M151 75 L158 91 L175 92 L162 103 L166 120 L151 111 L136 120 L140 103 L127 92 L144 91 Z" fill="#fff" stroke="#eaf8ff" stroke-width="1"/>
+    <circle cx="91" cy="104" r="66" fill="#fff" opacity=".96"/>
+    <circle cx="116" cy="88" r="57" fill="url(#red)"/>
+    <path d="M158 73 L167 93 L189 94 L172 108 L178 130 L158 118 L138 130 L144 108 L127 94 L149 93 Z" fill="#fff" stroke="#eaf8ff" stroke-width="1"/>
   </g>
   <circle cx="110" cy="110" r="96" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1"/>
   <circle cx="110" cy="110" r="102" fill="none" stroke="url(#blue)" stroke-width="2" opacity=".7"/>
