@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07060d">
-<title>STAR AI — Panel</title>
+<title>TR AI — Panel</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
 .dashboard-page{overflow:hidden;height:100vh;height:100dvh}
@@ -25,14 +25,14 @@
 </style>
 </head>
 <body class="dashboard-page">
-<header class="dash-nav"><div style="display:flex;align-items:center"><button id="mobileMenu" class="mobile-menu" type="button" aria-label="Menü">☰</button><a class="brand" href="/">✦ STAR <b>AI</b></a></div><div class="dash-user"><span id="user">Yükleniyor…</span><span class="credits-pill">✦ <b id="credits">—</b></span><button id="logout" class="logout" type="button">Çıkış</button></div></header>
+<header class="dash-nav"><div style="display:flex;align-items:center"><button id="mobileMenu" class="mobile-menu" type="button" aria-label="Menü">☰</button><a class="brand" href="/">✦ TR <b>AI</b></a></div><div class="dash-user"><span id="user">Yükleniyor…</span><span class="credits-pill">✦ <b id="credits">—</b></span><button id="logout" class="logout" type="button">Çıkış</button></div></header>
 <div class="dashboard-shell">
-<aside id="sidebar" class="chat-sidebar"><button id="newChat" class="new-chat" type="button"><span>＋</span> Yeni sohbet</button><div class="sidebar-label">SOHBETLER</div><div id="conversationList" class="conversation-list"></div><div class="sidebar-bottom"><div class="credit-mini"><div><small>Kalan kredi</small><b id="creditsSide">—</b></div><span>STAR AI</span></div></div></aside>
+<aside id="sidebar" class="chat-sidebar"><button id="newChat" class="new-chat" type="button"><span>＋</span> Yeni sohbet</button><div class="sidebar-label">SOHBETLER</div><div id="conversationList" class="conversation-list"></div><div class="sidebar-bottom"><div class="credit-mini"><div><small>Kalan kredi</small><b id="creditsSide">—</b></div><span>TR AI</span></div></div></aside>
 <div id="overlay" class="mobile-overlay"></div>
-<main class="chat-main"><div class="chat-main-head"><div class="chat-title-wrap"><div class="assistant-avatar">✦</div><div class="chat-title"><b>STAR AI Assistant</b><small><span class="online-dot"></span>Çevrimiçi • Hızlı yanıt</small></div></div><div class="chat-actions"><button id="exportChat" class="chat-action" type="button" title="Sohbeti dışa aktar">↓</button></div></div>
+<main class="chat-main"><div class="chat-main-head"><div class="chat-title-wrap"><div class="assistant-avatar">✦</div><div class="chat-title"><b>TR AI Assistant</b><small><span class="online-dot"></span>Çevrimiçi • Hızlı yanıt</small></div></div><div class="chat-actions"><button id="exportChat" class="chat-action" type="button" title="Sohbeti dışa aktar">↓</button></div></div>
 <div id="messages"><div class="messages-inner" id="messagesInner"><div class="welcome"><div class="welcome-icon">✦</div><h1>Bugün sana nasıl yardımcı olabilirim?</h1><p>Bir soru sor, fikir üret veya birlikte bir şeyler oluşturalım.</p></div></div></div>
-<div class="composer-wrap"><div id="imagePreview" class="image-preview"><img id="previewImage" alt="Seçilen görsel"><div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small>STAR AI bu görseli analiz edebilir.</small></div><button id="removeImage" class="remove-image" type="button" aria-label="Görseli kaldır">×</button></div>
-<form id="chat"><input id="imageInput" class="image-input" type="file" accept="image/jpeg,image/png,image/webp"><button id="attachButton" class="attach-button" type="button" aria-label="Görsel ekle" title="Görsel ekle">＋</button><textarea id="message" autocomplete="off" maxlength="12000" rows="1" placeholder="STAR AI'a bir mesaj yazın…"></textarea><button id="sendButton" class="btn" type="submit" aria-label="Gönder">↑</button></form><div class="composer-note">Görsel ekleyebilir, Enter ile gönderebilirsiniz. <span>STAR AI hata yapabilir.</span></div></div></main></div>
+<div class="composer-wrap"><div id="imagePreview" class="image-preview"><img id="previewImage" alt="Seçilen görsel"><div class="image-preview-info"><b id="previewName">Görsel seçildi</b><small>TR AI bu görseli analiz edebilir.</small></div><button id="removeImage" class="remove-image" type="button" aria-label="Görseli kaldır">×</button></div>
+<form id="chat"><input id="imageInput" class="image-input" type="file" accept="image/jpeg,image/png,image/webp"><button id="attachButton" class="attach-button" type="button" aria-label="Görsel ekle" title="Görsel ekle">＋</button><textarea id="message" autocomplete="off" maxlength="12000" rows="1" placeholder="TR AI'a bir mesaj yazın…"></textarea><button id="sendButton" class="btn" type="submit" aria-label="Gönder">↑</button></form><div class="composer-note">Görsel ekleyebilir, Enter ile gönderebilirsiniz. <span>TR AI hata yapabilir.</span></div></div></main></div>
 <script>
 const $=id=>document.getElementById(id);let conversationId=null;let conversations=[];let busy=false;let selectedImageData=null;let selectedImageName='';
 async function load(){try{const response=await fetch('/api/me');if(!response.ok){location.href='/login.html';return;}const data=await response.json();setCredits(data.user.credits);$('user').textContent=data.user.name;await loadConversations();const params=new URLSearchParams(location.search);const plan=params.get('plan');if(plan==='basic'||plan==='pro')setTimeout(()=>buy(plan),150);}catch{location.href='/login.html';}}
