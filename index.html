@@ -11,7 +11,54 @@
     .hero-brand-logo{display:block;width:min(200px,42vw);height:min(200px,42vw);object-fit:contain;margin:0 auto 18px;filter:drop-shadow(0 0 32px rgba(100,80,255,.34));border-radius:24px}
     @media(max-width:600px){.brand-logo{width:34px;height:34px}.hero-brand-logo{width:170px;height:170px;margin-bottom:18px}}
   </style>
-<style>footer a{color:#aaa2bd;text-decoration:none}footer a:hover{color:#d1b4ff}</style></head>
+<style>footer a{color:#aaa2bd;text-decoration:none}footer a:hover{color:#d1b4ff}</style>
+<style id="tr-ai-redesign">
+:root{--bg:#07090e;--bg-soft:#0d1018;--panel:#11151e;--panel-2:#171c27;--text:#f7f8fb;--muted:#a2a9b8;--muted-2:#747d8d;--line:rgba(255,255,255,.1);--purple:#e31b36;--purple-2:#ff4054;--cyan:#dce5f2;--green:#59e1a5;--radius:24px;--shadow:0 30px 90px rgba(0,0,0,.48)}
+body{background:radial-gradient(ellipse at 50% -15%,rgba(227,27,54,.19),transparent 47%),radial-gradient(ellipse at 100% 45%,rgba(91,115,155,.09),transparent 38%),#07090e;letter-spacing:-.01em}
+body:before{opacity:.2;background-size:68px 68px;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)}
+.nav{padding:13px clamp(18px,6vw,88px);min-height:78px;background:rgba(7,9,14,.82);border-bottom-color:rgba(255,255,255,.08)}
+.brand{gap:9px;font-size:21px;letter-spacing:.12em}.brand b{color:#ff334b;text-shadow:0 0 25px rgba(227,27,54,.45)}
+.brand-logo{filter:drop-shadow(0 0 15px rgba(227,27,54,.35))!important}
+.nav nav{gap:32px}.nav nav a{font-size:13px;color:#b2b8c4}.nav nav a:hover{color:#fff}
+.login-premium{border-radius:999px;padding:7px 14px;background:rgba(255,255,255,.025)}
+.icon-circle{background:linear-gradient(135deg,#c8102e,#ff4054);box-shadow:0 0 20px rgba(227,27,54,.25)}
+.btn{border-radius:999px;background:linear-gradient(135deg,#c8102e,#f32d46);box-shadow:0 12px 35px rgba(227,27,54,.23),inset 0 1px rgba(255,255,255,.22)}
+.btn:hover{box-shadow:0 18px 50px rgba(227,27,54,.3),inset 0 1px rgba(255,255,255,.25)}
+.btn.ghost{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.035)}
+.hero{position:relative;width:min(1200px,92%);padding:65px 0 100px}
+.hero:before{content:"";position:absolute;z-index:-1;top:95px;left:50%;width:min(720px,90vw);height:400px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(227,27,54,.12),transparent 68%);pointer-events:none}
+.hero-brand-logo{width:min(280px,56vw);height:min(280px,56vw);margin:0 auto 25px;filter:drop-shadow(0 0 35px rgba(227,27,54,.24))!important;border-radius:0}
+.pill{border-color:rgba(227,27,54,.38);background:rgba(227,27,54,.07);color:#ff9aa6;letter-spacing:.19em}
+.hero h1{max-width:1000px;margin:28px auto 22px;font-size:clamp(45px,7.4vw,92px);line-height:.99;letter-spacing:-.075em}
+.hero h1 span,.heading h2 span,.center h2 span{background:linear-gradient(100deg,#ff465c 0%,#fff 55%,#a9b9d0 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero>p{max-width:640px;color:#a8afbd;font-size:17px;line-height:1.8}
+.hero-buttons{gap:13px}.hero-buttons .btn{min-height:53px;padding:0 27px}
+.hero-note{color:#7e8797;letter-spacing:.015em}
+.mock{margin-top:70px;padding:11px;border-color:rgba(255,255,255,.13);border-radius:28px;background:linear-gradient(145deg,rgba(29,33,43,.9),rgba(8,10,15,.98));box-shadow:0 45px 120px rgba(0,0,0,.58),0 0 80px rgba(227,27,54,.08)}
+.mocktop{height:49px}.mocktop b{letter-spacing:.16em}.mockbody{min-height:390px}.mockbody aside .active{background:rgba(227,27,54,.13);border-color:rgba(227,27,54,.23)}.mockbody aside section em{color:#ff6374}
+.mockbody article p.ai{background:rgba(255,255,255,.045)}.mockbody article p.user{background:linear-gradient(135deg,rgba(185,18,43,.95),rgba(227,27,54,.74))}
+.composer button{border-radius:50%;background:linear-gradient(135deg,#c8102e,#f32d46)}
+.section{padding:105px 0}.heading label,.center label,.cta label,.eyebrow{color:#ff6677}
+.heading h2,.center h2{letter-spacing:-.065em}.heading>p,.center>p{line-height:1.8}
+.cards{gap:18px}.cards>div{position:relative;min-height:235px;padding:30px;border-radius:22px;border-color:rgba(255,255,255,.09);background:linear-gradient(145deg,rgba(22,26,36,.88),rgba(10,12,18,.96));overflow:hidden}
+.cards>div:after{content:"";position:absolute;right:-70px;top:-85px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(227,27,54,.11),transparent 70%);pointer-events:none}
+.cards>div:hover{border-color:rgba(255,75,94,.34);box-shadow:0 24px 65px rgba(0,0,0,.3)}
+.cards>div>b{color:#ff8996;background:rgba(227,27,54,.09);border-color:rgba(227,27,54,.22);border-radius:14px}
+.plans{gap:18px}.plan{border-radius:23px;border-color:rgba(255,255,255,.1);background:linear-gradient(145deg,rgba(22,26,36,.9),rgba(9,11,16,.98))}
+.plan.popular{border-color:rgba(255,64,84,.6);background:radial-gradient(400px 200px at 50% 0%,rgba(227,27,54,.18),transparent 70%),linear-gradient(150deg,rgba(28,22,31,.96),rgba(8,10,15,.98));box-shadow:0 25px 80px rgba(130,10,28,.13)}
+.plan.popular>i{background:linear-gradient(135deg,#c8102e,#f32d46);letter-spacing:.08em}
+.plan li:before{color:#ff6475}
+.faq-list details{border-radius:16px;background:rgba(255,255,255,.025)}
+.faq-icon{color:#ff8996;background:rgba(227,27,54,.1)}
+details[open] .plus{color:#ff6677}
+.cta{border-color:rgba(227,27,54,.24);border-radius:25px;background:radial-gradient(500px 230px at 10% 50%,rgba(227,27,54,.13),transparent 70%),rgba(14,16,23,.9)}
+footer{border-top-color:rgba(255,255,255,.1)}footer b{letter-spacing:.13em}footer b:first-letter{color:#ff4054}
+@media(min-width:1000px){.hero{padding-top:58px}.hero-brand-logo{width:260px;height:260px}.mock{transform:perspective(1600px) rotateX(1deg)}}
+@media(max-width:600px){.hero{padding:42px 0 65px}.hero-brand-logo{width:190px;height:190px;margin-bottom:22px}.hero h1{letter-spacing:-.065em}.hero>p{font-size:14px}.section{padding:72px 0}.cards>div{min-height:0}.nav{padding:10px 13px}.brand{gap:5px;font-size:17px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+
+</head>
 <body>
 <header class="nav">
   <a class="brand" href="/"><img class="brand-logo" src="/assets/star-ai-world.svg?v=11" alt="TR AI"> <span>TR <b>AI</b></span></a>
