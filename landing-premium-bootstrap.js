@@ -30,4 +30,4 @@ body{background:radial-gradient(circle at 50% 0%,rgba(104,57,220,.17),transparen
 }
 
 if (changed) fs.writeFileSync(file, html);
-console.log('STAR AI premium landing typography and compact emblem rendering enabled.');
+console.log('TR AI premium landing typography and compact emblem rendering enabled.');
