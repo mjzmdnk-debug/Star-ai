@@ -1,36 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
-  <title id="title">STAR AI</title>
-  <desc id="desc">STAR AI blue and violet globe emblem</desc>
+  <title id="title">TR AI — Turkish Crescent and Star</title>
+  <desc id="desc">Modern Turkish crescent and star emblem with red, white and electric blue neon accents.</desc>
   <defs>
-    <radialGradient id="bg" cx="38%" cy="30%" r="78%">
-      <stop offset="0" stop-color="#263b9b"/>
-      <stop offset="0.52" stop-color="#11145a"/>
-      <stop offset="1" stop-color="#070718"/>
+    <radialGradient id="bg" cx="35%" cy="25%" r="80%">
+      <stop offset="0" stop-color="#242b82"/>
+      <stop offset=".56" stop-color="#10143d"/>
+      <stop offset="1" stop-color="#050713"/>
     </radialGradient>
-    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#58a8ff"/>
-      <stop offset="0.5" stop-color="#8d72ff"/>
-      <stop offset="1" stop-color="#d8d5ff"/>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff647c"/><stop offset=".48" stop-color="#e30b2f"/><stop offset="1" stop-color="#8d001b"/>
     </linearGradient>
-    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#aeb9ff"/>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6cf4ff"/><stop offset=".45" stop-color="#2678ff"/><stop offset="1" stop-color="#8a3dff"/>
     </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <clipPath id="clip"><circle cx="110" cy="110" r="94"/></clipPath>
+    <filter id="softGlow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <clipPath id="disc"><circle cx="110" cy="110" r="91"/></clipPath>
   </defs>
-  <circle cx="110" cy="110" r="103" fill="#08081a"/>
-  <circle cx="110" cy="110" r="96" fill="url(#bg)" stroke="#685cff" stroke-opacity=".55" stroke-width="2"/>
-  <g clip-path="url(#clip)" fill="none" stroke-linecap="round" filter="url(#glow)">
-    <path d="M-5 125 C48 67 91 36 151 37 C182 38 211 52 232 72" stroke="url(#arc)" stroke-width="13" opacity=".9"/>
-    <path d="M-10 153 C48 95 96 64 151 65 C190 66 215 82 236 103" stroke="#284fff" stroke-width="8" opacity=".78"/>
-    <path d="M20 218 C55 160 89 125 130 104 C163 87 194 84 224 94" stroke="url(#arc)" stroke-width="10" opacity=".82"/>
-    <path d="M63 214 C78 165 101 125 130 91 C148 70 166 54 186 44" stroke="#d8e2ff" stroke-width="5" opacity=".9"/>
-    <path d="M102 213 C113 164 126 128 148 96 C163 74 181 56 201 42" stroke="#647eff" stroke-width="4" opacity=".85"/>
+  <circle cx="110" cy="110" r="106" fill="#050713" stroke="url(#blue)" stroke-width="2.5"/>
+  <circle cx="110" cy="110" r="98" fill="url(#bg)" stroke="#c2e7ff" stroke-opacity=".24" stroke-width="1.5"/>
+  <circle cx="110" cy="110" r="91" fill="none" stroke="url(#blue)" stroke-width="2" opacity=".75"/>
+  <g clip-path="url(#disc)" fill="none" stroke-linecap="round">
+    <path d="M-10 155 C43 89 93 49 151 47 S213 68 241 88" stroke="url(#blue)" stroke-width="8" opacity=".8" filter="url(#glow)"/>
+    <path d="M-12 177 C50 116 100 78 151 76 S214 94 240 116" stroke="#f7fbff" stroke-width="2" opacity=".65"/>
+    <path d="M18 225 C60 160 94 129 137 105 S196 81 229 90" stroke="url(#blue)" stroke-width="5" opacity=".75"/>
+    <path d="M44 -10 C68 47 86 80 119 109" stroke="#dceaff" stroke-width="1.5" opacity=".24"/>
   </g>
-  <path d="M110 39 L116 57 L135 58 L120 69 L125 88 L110 77 L95 88 L100 69 L85 58 L104 57 Z" fill="url(#star)" filter="url(#glow)"/>
-  <circle cx="110" cy="110" r="96" fill="none" stroke="#9a8cff" stroke-opacity=".28" stroke-width="2"/>
+  <circle cx="104" cy="105" r="58" fill="#ff163e" opacity=".36" filter="url(#softGlow)"/>
+  <g filter="url(#glow)">
+    <circle cx="96" cy="101" r="48" fill="#fff" opacity=".96"/>
+    <circle cx="115" cy="89" r="42" fill="url(#red)"/>
+    <path d="M151 75 L158 91 L175 92 L162 103 L166 120 L151 111 L136 120 L140 103 L127 92 L144 91 Z" fill="#fff" stroke="#eaf8ff" stroke-width="1"/>
+  </g>
+  <circle cx="110" cy="110" r="96" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="110" cy="110" r="102" fill="none" stroke="url(#blue)" stroke-width="2" opacity=".7"/>
 </svg>
