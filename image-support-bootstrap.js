@@ -41,17 +41,35 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']);
       reserved = true;
     });
-    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/black-forest-labs/flux-1-kontext-dev', {
+    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + apiToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: 'Edit this image according to the instruction. Preserve identity, composition, lighting and all unrequested details. Make only the requested changes and keep the result natural. Instruction: ' + prompt,
-        image: payload
+        prompt: 'Edit the provided image according to the user instruction. Preserve identity, face, pose, composition, and all unrequested details as much as possible. Apply only the requested change. Instruction: ' + prompt,
+        image_b64: payload,
+        num_steps: 20,
+        strength: 0.55,
+        guidance: 7.5
       })
     });
-    const providerData = await cfResponse.json().catch(() => ({}));
-    if (!cfResponse.ok || providerData?.success === false) throw Object.assign(new Error('CLOUDFLARE_IMAGE_EDIT_ERROR'), { status: cfResponse.status });
-    const b64 = providerData?.result?.image || providerData?.image;
+    let b64 = '';
+    const responseType = String(cfResponse.headers.get('content-type') || '').toLowerCase();
+    if (!cfResponse.ok) {
+      const errorBody = await cfResponse.text().catch(() => '');
+      console.error('IMAGE_EDIT_PROVIDER_REJECTED', { status: cfResponse.status, contentType: responseType, body: errorBody.slice(0, 500) });
+      throw Object.assign(new Error('CLOUDFLARE_IMAGE_EDIT_ERROR'), { status: cfResponse.status });
+    }
+    if (responseType.startsWith('image/')) {
+      const imageBuffer = Buffer.from(await cfResponse.arrayBuffer());
+      if (imageBuffer.length) b64 = imageBuffer.toString('base64');
+    } else {
+      const providerData = await cfResponse.json().catch(() => ({}));
+      if (providerData?.success === false) {
+        console.error('IMAGE_EDIT_PROVIDER_REJECTED', { status: cfResponse.status, errors: providerData?.errors?.map(item => ({ code: item?.code, message: String(item?.message || '').slice(0, 200) })) });
+        throw Object.assign(new Error('CLOUDFLARE_IMAGE_EDIT_ERROR'), { status: cfResponse.status });
+      }
+      b64 = providerData?.result?.image || providerData?.image || '';
+    }
     if (!b64 || typeof b64 !== 'string') throw new Error('EMPTY_IMAGE_RESULT');
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
