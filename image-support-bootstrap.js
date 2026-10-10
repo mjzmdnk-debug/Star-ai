@@ -41,7 +41,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']);
       reserved = true;
     });
-    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img', {
+    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/runwayml/stable-diffusion-v1-5-inpainting', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + apiToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
