@@ -47,6 +47,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       body: JSON.stringify({
         prompt: 'Edit the provided image according to the user instruction. Preserve identity, face, pose, composition, and all unrequested details as much as possible. Apply only the requested change. Instruction: ' + prompt,
         image_b64: payload,
+        mask_image: payload,
         num_steps: 20,
         strength: 0.55,
         guidance: 7.5
