@@ -43,6 +43,27 @@ body:after{content:"";position:fixed;z-index:-1;pointer-events:none;inset:0;opac
 a:focus-visible,button:focus-visible{outline:2px solid #ff3b59;outline-offset:3px}
 @media(prefers-reduced-motion:no-preference){.hero h1{text-wrap:balance}.hero h1 span,.hero .accent{background:linear-gradient(100deg,#168bff 15%,#a9e6ff 48%,#ff3654 85%);-webkit-background-clip:text;background-clip:text;color:transparent}}
 </style>
+<style data-trai-hero-layout="v2">
+/* Balanced hero: concise typography, strong visual focus, blue/red energy */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,.92fr);align-items:center;column-gap:clamp(24px,4vw,64px);text-align:left;padding:62px 0 68px}
+.hero:before{top:8%;left:72%;width:60%;height:82%;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(0,112,255,.23),transparent 62%)}
+.hero .eyebrow{font-size:10px;letter-spacing:.08em;border-color:rgba(22,139,255,.38);background:rgba(10,38,77,.45);color:#b6dcff}
+.hero h1{max-width:660px;margin:22px 0 18px;font-family:"Space Grotesk","Manrope",sans-serif;font-size:clamp(40px,4.5vw,62px);line-height:1.08;letter-spacing:-.055em;text-wrap:balance}
+.hero h1 span{background:linear-gradient(100deg,#168bff 5%,#8bd6ff 50%,#ff3152 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero>p{max-width:520px;margin:0 0 25px;font-size:15px;line-height:1.85}
+.hero-buttons{justify-content:flex-start}
+.hero-note{font-size:10px;margin-top:15px}
+.product-stage{grid-column:2;grid-row:1;margin:0;width:100%;max-width:unset;border-radius:24px;border-color:rgba(33,145,255,.36);box-shadow:0 32px 90px rgba(0,0,0,.42),0 0 70px rgba(0,100,255,.13);transform:perspective(1200px) rotateY(-3deg)}
+.product-window{border-radius:23px;background:rgba(4,12,27,.94)}
+.product-body{grid-template-columns:155px 1fr;min-height:360px}
+.product-side{padding:20px 10px}
+.product-chat{padding:20px 16px}
+.chat-bubble{font-size:10px}
+.hero .hero-copy{grid-column:1;grid-row:1}
+.hero-visual-art{position:absolute;inset:-8% -10% -8% 44%;z-index:-1;pointer-events:none;overflow:hidden;border-radius:50%;background:radial-gradient(ellipse at 56% 38%,rgba(0,117,255,.22),transparent 48%),radial-gradient(ellipse at 70% 65%,rgba(255,35,75,.12),transparent 42%)}
+@media(max-width:900px){.hero{grid-template-columns:minmax(0,1fr) minmax(270px,.85fr);column-gap:22px;padding:55px 0 60px}.hero h1{font-size:clamp(36px,5vw,48px)}.product-body{grid-template-columns:1fr;min-height:300px}.product-side{display:none}.product-chat{min-height:300px}.hero>p{font-size:13px}}
+@media(max-width:650px){.hero{display:flex;flex-direction:column;align-items:stretch;text-align:center;padding:55px 0 48px;gap:0}.hero h1{font-size:clamp(36px,10.2vw,48px);margin:20px auto 16px;letter-spacing:-.06em}.hero>p{font-size:13px;margin:0 auto 22px}.hero-buttons{justify-content:center}.hero-note{margin-top:14px}.product-stage{order:2;margin-top:32px;transform:none;width:100%;border-radius:17px}.product-window{border-radius:16px}.product-chat{padding:15px;min-height:280px}.chat-bubble{max-width:92%;font-size:10px}.hero:before{top:10%;left:50%;width:110%;height:60%}}
+</style>
 </head>
 <body>
 <header class="nav">
@@ -52,13 +73,17 @@ a:focus-visible,button:focus-visible{outline:2px solid #ff3b59;outline-offset:3p
 </header>
 <main>
 <section class="hero">
+<div class="hero-copy">
 <div class="eyebrow"><i></i> YENİ NESİL YAPAY ZEKÂ ÇALIŞMA ALANI</div>
 <h1>Fikirlerin için daha güçlü bir alan.<br><span>Üretmek için tasarlandı.</span></h1>
 <p>Yaz, araştır, fikir geliştir ve görseller üzerinde çalış. TR AI, üretkenliğini tek bir sade ve akıllı çalışma alanında toplar.</p>
 <div class="hero-buttons"><a class="btn" href="/login.html">TR AI'ı ücretsiz dene <span>→</span></a><a class="btn ghost" href="#ozellikler">Platformu keşfet <span>↓</span></a></div>
 <small class="hero-note"><span>●</span> Türkçe odaklı &nbsp;·&nbsp; <span>●</span> Tek çalışma alanı &nbsp;·&nbsp; <span>●</span> Hesabınla senkronize</small>
+</div>
+<div class="hero-visual-art" aria-hidden="true"></div>
 <div class="product-stage"><div class="product-window"><div class="window-top"><i class="window-dot"></i><i class="window-dot"></i><i class="window-dot"></i><span class="window-title">TR AI WORKSPACE</span><span class="window-status">● Çevrimiçi</span></div><div class="product-body"><aside class="product-side"><div class="product-logo"><i>✦</i> TR AI WORKSPACE</div><div class="side-label">ÇALIŞMA ALANI</div><div class="side-item active">✦ &nbsp; AI Asistan</div><div class="side-item">⌁ &nbsp; Görsel araçları</div><div class="side-item">✎ &nbsp; Metin stüdyosu</div><div class="side-item">◷ &nbsp; Sohbet geçmişi</div><div class="side-credit"><small>Kalan kredin</small><strong>850</strong><span>● Hesabın hazır</span></div></aside><article class="product-chat"><div class="product-chat-head"><i>✦</i><div><b>TR AI Assistant</b><small>Bağlamını takip eden akıllı asistan</small></div></div><div class="chat-bubble ai">Merhaba! Bugün hangi fikri birlikte gerçeğe dönüştürelim?</div><div class="chat-bubble user">Markam için güçlü, modern bir tanıtım metni hazırla.</div><div class="chat-bubble ai">Elbette. Markanın karakterini yansıtan, net ve akılda kalıcı bir metinle başlayalım.</div><div class="product-input">Bir fikir yaz veya bir görsel ekle… <i>↑</i></div></article></div></div></div>
 <div class="trust-row"><span><i>✦</i> Fikirden sonuca</span><span><i>⌁</i> Görsel ve metin araçları</span><span><i>◷</i> Sohbet geçmişin</span><span><i>↗</i> Her ekranda çalışır</span></div>
+</div>
 </section>
 <section id="ozellikler" class="section"><div class="section-head"><div><div class="section-label">TEK PLATFORM. DAHA ÇOK İMKÂN.</div><h2>İş akışın sadeleşsin.<br><span>Fikirlerin büyüsün.</span></h2></div><p>Her özelliği bir amaç için tasarladık: daha az araca geçiş, daha az karmaşa ve üretmeye daha fazla zaman.</p></div><div class="feature-grid">
 <article class="feature feature-main"><div class="feature-index"><span>01 / ASİSTAN</span><span>↗</span></div><div class="feature-icon">✦</div><h3>Fikirlerini konuşarak geliştir</h3><p>Sorular sor, taslaklar oluştur, fikirlerini netleştir ve konuşma bağlamını koruyarak çalışmaya devam et.</p><div class="feature-visual"><span></span><span></span><span></span><span></span><span></span><span></span></div></article>
