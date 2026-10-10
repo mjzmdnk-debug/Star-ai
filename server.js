@@ -108,6 +108,24 @@ setInterval(() => {
   });
 }, 15 * 60 * 1000).unref();
 
+function parseMultipartFields(buffer, contentType) {
+  const boundaryMatch = String(contentType || '').match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!boundaryMatch || !Buffer.isBuffer(buffer)) return {};
+  const boundary = boundaryMatch[1] || boundaryMatch[2];
+  const source = buffer.toString('utf8');
+  const fields = {};
+  for (const part of source.split('--' + boundary)) {
+    const separator = part.indexOf('\r\n\r\n');
+    if (separator < 0) continue;
+    const headers = part.slice(0, separator);
+    const nameMatch = headers.match(/content-disposition:\s*form-data;[^\r\n]*name="([^"]+)"/i);
+    if (!nameMatch) continue;
+    const value = part.slice(separator + 4).replace(/\r\n$/, '').replace(/\r\n--$/, '');
+    fields[nameMatch[1]] = value;
+  }
+  return fields;
+}
+
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a));
   const bb = Buffer.from(String(b));
@@ -283,6 +301,8 @@ app.disable('x-powered-by');
 app.use(express.urlencoded({ extended: false, limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 app.use(cookieParser());
+// Shopier OSB sends notification fields as multipart/form-data.
+app.use('/api/shopier/webhook', express.raw({ type: 'multipart/form-data', limit: '1mb' }));
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -333,8 +353,9 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     const username = String(process.env.SHOPIER_OSB_USERNAME || '').trim();
     const key = String(process.env.SHOPIER_OSB_KEY || '').trim();
     if (!username || !key) return res.status(503).send('OSB credentials are not configured.');
-    const encoded = typeof req.body?.res === 'string' ? req.body.res : '';
-    const receivedHash = typeof req.body?.hash === 'string' ? req.body.hash.trim() : '';
+    const webhookBody = Buffer.isBuffer(req.body) ? parseMultipartFields(req.body, req.get('content-type')) : (req.body || {});
+    const encoded = typeof webhookBody?.res === 'string' ? webhookBody.res : '';
+    const receivedHash = typeof webhookBody?.hash === 'string' ? webhookBody.hash.trim() : '';
     if (!encoded || !receivedHash) { console.warn('Shopier OSB rejected: missing parameter ' + JSON.stringify({ bodyKeys: Object.keys(req.body || {}), hasRes: Boolean(encoded), hasHash: Boolean(receivedHash), contentType: String(req.get('content-type') || '') })); return res.status(400).send('missing parameter'); }
 
     const expectedHash = crypto.createHmac('sha256', key).update(encoded + username).digest('hex');
