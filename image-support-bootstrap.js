@@ -105,16 +105,22 @@ const enhancementScript = String.raw`
     const creditsSide = document.getElementById('creditsSide');
     if (!preview || !info || !form || !input || !fileInput || !messages) return;
     let imageMode = 'edit';
-    const generateButton = document.createElement('button');
-    generateButton.type = 'button';
-    generateButton.id = 'starVisibleGenerateButton';
-    generateButton.textContent = '🖼️ Görsel oluştur';
-    generateButton.className = 'star-quick-tool';
-    generateButton.style.margin = '0 0 8px 8px';
-    if (!document.getElementById('starVisibleGenerateButton')) {
+    let generateButton = document.getElementById('starVisibleGenerateButton');
+    if (!generateButton) {
+      generateButton = document.createElement('button');
+      generateButton.type = 'button';
+      generateButton.id = 'starVisibleGenerateButton';
+      generateButton.textContent = '🖼️ Görsel oluştur';
+      generateButton.className = 'star-quick-tool';
+      generateButton.setAttribute('aria-label', 'Görsel oluştur');
+      generateButton.style.cssText = 'display:flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:99!important;align-items:center;justify-content:center;margin:8px 0;padding:10px 14px;min-height:40px;border-radius:12px;border:1px solid #9564ff;background:#36205f;color:#fff;font-size:13px;font-weight:700;cursor:pointer;width:max-content;max-width:100%;';
       form.parentElement.insertBefore(generateButton, form);
+    }
+    if (!generateButton.dataset.starBound) {
+      generateButton.dataset.starBound = '1';
       generateButton.addEventListener('click', function () {
         imageMode = 'generate';
+        tools.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('active', b.dataset.mode === 'generate'); });
         input.placeholder = 'Görseli tarif edin...';
         input.focus();
       });
