@@ -19,8 +19,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
-const AI_MODEL = String(process.env.AI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const groqApiKey = String(process.env.GROQ_API_KEY || '').trim();
+const openaiApiKey = String(process.env.OPENAI_API_KEY || '').trim();
+const AI_MODEL = String(
+  groqApiKey
+    ? (process.env.GROQ_MODEL || 'openai/gpt-oss-20b')
+    : (process.env.AI_MODEL || 'gpt-4o-mini')
+).trim();
+const aiClient = groqApiKey
+  ? new OpenAI({ apiKey: groqApiKey, baseURL: 'https://api.groq.com/openai/v1' })
+  : openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 if (isProduction && JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must be set to a strong value (at least 32 characters) in production.');
@@ -44,7 +52,7 @@ const SHOPIER_PRODUCTS = {
   ...(businessId ? { business: { id: businessId, name: 'TR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${businessId}` } } : {})
 };
 
-const allowedModels = new Set([AI_MODEL, 'gpt-4o-mini']);
+const allowedModels = new Set([AI_MODEL, ...(groqApiKey ? [] : ['gpt-4o-mini'])]);
 const SYSTEM_PROMPT = 'Sen TR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.';
 
 function parseTrustProxy(value) {
@@ -294,7 +302,7 @@ app.get('/api/health', async (req, res) => {
   res.status(database ? 200 : 503).json({
     ok: database,
     database,
-    aiConfigured: Boolean(openai),
+    aiConfigured: Boolean(aiClient),
     paymentConfigured: Boolean(String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim() && basicId && proId),
     shopierApiConfigured: Boolean(SHOPIER_PAT),
     shopierWebhookConfigured: Boolean(String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim()),
@@ -473,7 +481,7 @@ app.get('/api/search/:query', auth, async (req, res) => {
 });
 
 app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat', getKey: req => `user:${req.user_id}` }), async (req, res) => {
-  if (!openai) return res.status(503).json({ error: 'AI service is not configured.' });
+  if (!aiClient) return res.status(503).json({ error: 'AI service is not configured.' });
   const { message, conversationId, model, temperature, maxTokens } = validateChatInput(req.body);
   if (!message) return res.status(400).json({ error: 'Mesaj gerekli.' });
 
@@ -499,7 +507,7 @@ app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat',
       [convId]
     );
     history.reverse();
-    const completion = await openai.chat.completions.create({
+    const completion = await aiClient.chat.completions.create({
       model,
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: message }],
       temperature,
