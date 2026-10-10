@@ -24,7 +24,7 @@ const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
 const AI_PROVIDER = String(process.env.AI_PROVIDER || (GROQ_API_KEY ? 'groq' : 'openai')).trim().toLowerCase();
 const AI_MODEL = String(
   process.env.AI_MODEL ||
-  (AI_PROVIDER === 'groq' ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') : 'gpt-4o-mini')
+  (AI_PROVIDER === 'groq' ? (process.env.GROQ_MODEL || 'openai/gpt-oss-120b') : 'gpt-4o-mini')
 ).trim();
 const aiApiKey = AI_PROVIDER === 'groq' ? GROQ_API_KEY : OPENAI_API_KEY;
 const openai = aiApiKey
@@ -543,9 +543,9 @@ app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat',
         });
       } catch (refundError) { console.error('Credit refund failed:', refundError); }
     }
-    if (e.status === 404) return res.status(404).json({ error: 'Konuşma bulunamadı.' });
+    if (e.status === 404 && e.message === 'CONVERSATION_NOT_FOUND') return res.status(404).json({ error: 'Konuşma bulunamadı.' });
     if (e.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor.' });
-    console.error('Chat error:', e);
+    console.error('Chat error:', { message: e?.message, status: e?.status, code: e?.code, type: e?.type });
     res.status(500).json({ error: 'AI yanıtı alınamadı.' });
   }
 });
