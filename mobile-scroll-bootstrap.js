@@ -3,25 +3,27 @@ import fs from 'node:fs';
 const dashboardFile = new URL('./dashboard.html', import.meta.url);
 let dashboard = fs.readFileSync(dashboardFile, 'utf8');
 
-if (!dashboard.includes('data-tr-ai-mobile-scroll-fix="v1"')) {
-  const patch = String.raw`<style data-tr-ai-mobile-scroll-fix="v1">
+const patch = String.raw`<style data-tr-ai-mobile-scroll-fix="v2">
 html,body.dashboard-page{width:100%;min-width:0}
-body.dashboard-page{overflow:hidden;overscroll-behavior:none}
+body.dashboard-page{overflow:hidden}
 body.dashboard-page .dashboard-shell{min-height:0;min-width:0}
 body.dashboard-page .chat-main{min-height:0;min-width:0;overflow:hidden}
-body.dashboard-page #messages{display:block;flex:1 1 0%;min-height:0;height:0;max-height:100%;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain;scrollbar-gutter:stable}
-body.dashboard-page .messages-inner{min-height:min-content;padding-bottom:12px}
-body.dashboard-page .conversation-list{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain}
-body.dashboard-page #message{touch-action:pan-y;overscroll-behavior:contain}
+body.dashboard-page #messages{display:block;flex:1 1 auto;min-height:0;height:auto;max-height:none;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:auto}
+body.dashboard-page .messages-inner{min-height:100%;padding-bottom:16px}
+body.dashboard-page .conversation-list{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+body.dashboard-page #message{touch-action:pan-y}
 @media(max-width:800px){
-  body.dashboard-page{height:100vh;height:100dvh}
-  body.dashboard-page .dashboard-shell{height:calc(100vh - 70px);height:calc(100dvh - 70px);display:flex;min-height:0;overflow:hidden}
-  body.dashboard-page .chat-main{flex:1 1 auto;width:100%;height:100%;min-height:0}
-  body.dashboard-page #messages{padding-bottom:max(24px,env(safe-area-inset-bottom));overscroll-behavior-y:auto}
-  body.dashboard-page .composer-wrap{padding-bottom:max(9px,env(safe-area-inset-bottom))}
+  html,body.dashboard-page{height:auto;min-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:auto}
+  body.dashboard-page{min-height:100dvh;height:auto}
+  body.dashboard-page .dashboard-shell{height:auto;min-height:calc(100dvh - 64px);display:flex;overflow:visible}
+  body.dashboard-page .chat-main{flex:1 1 auto;width:100%;height:auto;min-height:calc(100dvh - 64px);overflow:visible}
+  body.dashboard-page #messages{flex:0 0 auto;height:auto;min-height:55dvh;max-height:none;overflow:visible;touch-action:pan-y;padding-bottom:24px}
+  body.dashboard-page .messages-inner{min-height:0}
+  body.dashboard-page .composer-wrap{position:sticky;bottom:0;z-index:30;padding-bottom:max(9px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(7,6,14,.98) 20%)}
 }
 </style>`;
-  dashboard = dashboard.replace('</head>', patch + '\n</head>');
-  fs.writeFileSync(dashboardFile, dashboard);
-  console.log('TR AI mobile touch scrolling fix enabled.');
-}
+const existingStyle = /<style data-tr-ai-mobile-scroll-fix="v\\d+">[\\s\\S]*?<\\/style>/;
+if (existingStyle.test(dashboard)) dashboard = dashboard.replace(existingStyle, patch);
+else dashboard = dashboard.replace('</head>', patch + '\\n</head>');
+fs.writeFileSync(dashboardFile, dashboard);
+console.log('TR AI mobile page scrolling fallback enabled.');
