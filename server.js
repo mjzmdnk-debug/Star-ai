@@ -515,9 +515,17 @@ app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat',
       [convId]
     );
     history.reverse();
+    const normalizedHistory = history.map(item => ({
+      role: item.role === 'assistant' ? 'assistant' : 'user',
+      content: typeof item.content === 'string'
+        ? item.content
+        : Array.isArray(item.content)
+          ? item.content.map(part => typeof part === 'string' ? part : (part?.text || part?.content || '[محتوى متعدد الوسائط سابق]')).join('\\n')
+          : String(item.content ?? '')
+    }));
     const completion = await openai.chat.completions.create({
       model,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: message }],
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedHistory, { role: 'user', content: message }],
       temperature,
       max_tokens: maxTokens
     });
