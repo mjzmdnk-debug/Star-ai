@@ -22,8 +22,9 @@ body.dashboard-page #message{touch-action:pan-y}
   body.dashboard-page .composer-wrap{position:sticky;bottom:0;z-index:30;padding-bottom:max(9px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(7,6,14,.98) 20%)}
 }
 </style>`;
-const existingStyle = /<style data-tr-ai-mobile-scroll-fix="v\\d+">[\\s\\S]*?<\\/style>/;
-if (existingStyle.test(dashboard)) dashboard = dashboard.replace(existingStyle, patch);
-else dashboard = dashboard.replace('</head>', patch + '\\n</head>');
+const styleStart = dashboard.indexOf('<style data-tr-ai-mobile-scroll-fix="v');
+const styleEnd = styleStart >= 0 ? dashboard.indexOf('</style>', styleStart) : -1;
+if (styleStart >= 0 && styleEnd >= 0) dashboard = dashboard.slice(0, styleStart) + patch + dashboard.slice(styleEnd + '</style>'.length);
+else dashboard = dashboard.replace('</head>', patch + '\n</head>');
 fs.writeFileSync(dashboardFile, dashboard);
 console.log('TR AI mobile page scrolling fallback enabled.');
