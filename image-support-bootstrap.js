@@ -105,6 +105,20 @@ const enhancementScript = String.raw`
     const creditsSide = document.getElementById('creditsSide');
     if (!preview || !info || !form || !input || !fileInput || !messages) return;
     let imageMode = 'edit';
+    const generateButton = document.createElement('button');
+    generateButton.type = 'button';
+    generateButton.id = 'starVisibleGenerateButton';
+    generateButton.textContent = '🖼️ Görsel oluştur';
+    generateButton.className = 'star-quick-tool';
+    generateButton.style.margin = '0 0 8px 8px';
+    if (!document.getElementById('starVisibleGenerateButton')) {
+      form.parentElement.insertBefore(generateButton, form);
+      generateButton.addEventListener('click', function () {
+        imageMode = 'generate';
+        input.placeholder = 'Görseli tarif edin...';
+        input.focus();
+      });
+    }
     const style = document.createElement('style');
     style.textContent = '.star-image-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.star-image-tool,.star-quick-tool{border:1px solid rgba(168,85,247,.28);background:rgba(124,60,255,.10);color:#cfc3ff;border-radius:10px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;transition:.18s ease}.star-image-tool.active,.star-image-tool:hover,.star-quick-tool:hover{background:rgba(124,60,255,.28);color:#fff;border-color:rgba(183,135,255,.5);transform:translateY(-1px)}.star-quick-tools{width:min(920px,100%);margin:0 auto 8px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}.star-quick-tools::-webkit-scrollbar{display:none}.star-result-label{font-size:11px;color:#8f879e;margin-bottom:8px;font-weight:700}.star-error{color:#ffb7c1!important;background:rgba(244,63,94,.08)!important;border-color:rgba(244,63,94,.25)!important}.dashboard-page #message{font-family:var(--star-font);letter-spacing:-.01em}';
     document.head.appendChild(style);
