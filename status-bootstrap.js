@@ -30,3 +30,4 @@ await import('./turkish-icons-bootstrap.js');
 await import('./professional-ai-engine-bootstrap.js');
 // Live research bootstrap disabled: it overwrites the Groq-compatible chat route with an unsupported Responses API call.
 await import('./language-selector-bootstrap.js');
+await import('./mobile-scroll-bootstrap.js');
