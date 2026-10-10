@@ -76,14 +76,13 @@ a:focus-visible,button:focus-visible{outline:2px solid #ff3b59;outline-offset:3p
 @media(max-width:900px){.hero-robot{min-height:290px;margin:0 -5% 0 -8%}.hero-robot svg{max-height:360px}.hero .product-stage{margin-top:28px}}
 @media(max-width:650px){.hero-robot{order:1;min-height:250px;width:100%;margin:8px 0 -2px}.hero-robot svg{max-height:310px;max-width:420px}.hero .product-stage{order:3;margin-top:27px}.hero .trust-row{order:2;margin-top:16px}.hero-visual-art{display:none}}
 </style>
-<style data-trai-android-image="v1">
-.hero-robot{overflow:visible}
-.hero-robot{min-height:460px;margin:-38px -7% -24px -3%;overflow:visible}
-.hero-robot:before{inset:4% -10%;background:radial-gradient(ellipse at 48% 48%,rgba(0,116,255,.34),transparent 57%),radial-gradient(ellipse at 72% 44%,rgba(255,34,83,.2),transparent 44%);filter:blur(32px);opacity:.95}
-.hero-robot:after{inset:-3% -8%;background:linear-gradient(90deg,var(--bg) 0%,rgba(8,13,22,.62) 8%,transparent 38%,transparent 78%,var(--bg) 100%),linear-gradient(0deg,var(--bg) 0%,transparent 24%,transparent 80%,var(--bg) 100%);pointer-events:none}
-.hero-robot .hero-android-image{display:block;width:120%;max-width:760px;height:clamp(410px,42vw,570px);object-fit:cover;object-position:53% 43%;mix-blend-mode:screen;opacity:.93;filter:contrast(1.08) saturate(1.12) brightness(.9) drop-shadow(0 28px 55px rgba(0,0,0,.42));-webkit-mask-image:radial-gradient(ellipse 68% 72% at 53% 48%,#000 43%,rgba(0,0,0,.92) 58%,rgba(0,0,0,.54) 73%,transparent 100%);mask-image:radial-gradient(ellipse 68% 72% at 53% 48%,#000 43%,rgba(0,0,0,.92) 58%,rgba(0,0,0,.54) 73%,transparent 100%)}
-@media(max-width:900px){.hero-robot{min-height:340px;margin:-15px -5% -15px}.hero-robot .hero-android-image{width:112%;height:390px;max-height:390px}}
-@media(max-width:650px){.hero-robot{min-height:270px;width:100%;margin:-5px -2% -8px}.hero-robot .hero-android-image{width:108%;height:300px;max-height:300px;object-position:52% 42%}}
+<style data-trai-android-image="v2">
+.hero-robot{position:relative;isolation:isolate;min-height:460px;margin:-42px -9% -30px -5%;overflow:visible}
+.hero-robot:before{content:"";position:absolute;z-index:-1;inset:-12%;background:radial-gradient(ellipse at 46% 47%,rgba(0,100,255,.34),transparent 54%),radial-gradient(ellipse at 70% 50%,rgba(255,30,75,.19),transparent 47%);filter:blur(36px)}
+.hero-robot:after{content:"";position:absolute;z-index:1;pointer-events:none;inset:-2%;background:radial-gradient(ellipse 64% 69% at 52% 48%,transparent 43%,rgba(8,13,22,.2) 64%,var(--bg) 87%);mix-blend-mode:normal}
+.hero-robot .hero-android-image{display:block;position:relative;width:128%;max-width:820px;height:clamp(430px,45vw,600px);object-fit:cover;object-position:52% 43%;mix-blend-mode:screen;opacity:.96;filter:contrast(1.08) saturate(1.15) brightness(.94);-webkit-mask-image:radial-gradient(ellipse 59% 68% at 52% 47%,#000 34%,rgba(0,0,0,.96) 48%,rgba(0,0,0,.7) 61%,rgba(0,0,0,.25) 73%,transparent 84%);mask-image:radial-gradient(ellipse 59% 68% at 52% 47%,#000 34%,rgba(0,0,0,.96) 48%,rgba(0,0,0,.7) 61%,rgba(0,0,0,.25) 73%,transparent 84%)}
+@media(max-width:900px){.hero-robot{min-height:340px;margin:-20px -7% -20px}.hero-robot .hero-android-image{width:116%;height:390px;max-height:390px}}
+@media(max-width:650px){.hero-robot{min-height:270px;width:100%;margin:-8px -2% -10px}.hero-robot .hero-android-image{width:110%;height:300px;max-height:300px;object-position:52% 42%}}
 </style>
 
 </head>
