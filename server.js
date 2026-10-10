@@ -56,7 +56,7 @@ const SHOPIER_PRODUCTS = {
   ...(businessId ? { business: { id: businessId, name: 'TR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${businessId}` } } : {})
 };
 
-const allowedModels = new Set([AI_MODEL, 'gpt-4o-mini']);
+const allowedModels = new Set([AI_MODEL]);
 const SYSTEM_PROMPT = 'Sen TR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.';
 
 function parseTrustProxy(value) {
