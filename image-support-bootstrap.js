@@ -78,6 +78,13 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
 
 fs.writeFileSync(serverFile, server);
 
+if (!server.includes("app.post('/api/image-generate'")) {
+  const imageGenerateRoute = "\napp.post('/api/image-generate', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-generate', getKey: req => 'user:' + req.user_id }), async (req, res) => {\n  if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });\n  if (!imageClient) return res.status(503).json({ error: 'Görsel servisi için POLLINATIONS_API_KEY ayarlanmalı.' });\n  const prompt = String(req.body?.prompt || '').trim().slice(0, 4000);\n  if (!prompt) return res.status(400).json({ error: 'Lütfen oluşturulacak görseli tarif edin.' });\n  const cost = 5;\n  let reserved = false;\n  try {\n    await db.tx(async t => {\n      const updated = await t.oneOrNone('UPDATE users SET credits=credits-$1 WHERE id=$2 AND credits >= $1 RETURNING credits', [cost, req.user_id]);\n      if (!updated) throw Object.assign(new Error('INSUFFICIENT_CREDITS'), { status: 402 });\n      await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -cost, 'AI image generation']);\n      reserved = true;\n    });\n    const response = await imageClient.images.generate({ model: 'openai/gpt-image-2', prompt, size: '1024x1024', quality: 'medium', response_format: 'b64_json' });\n    const b64 = response?.data?.[0]?.b64_json;\n    if (!b64) throw new Error('EMPTY_IMAGE_RESULT');\n    const balance = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);\n    reserved = false;\n    return res.json({ ok: true, image: 'data:image/png;base64,' + b64, credits: balance.credits, cost });\n  } catch (error) {\n    if (reserved) {\n      try {\n        await db.tx(async t => {\n          await t.none('UPDATE users SET credits=credits+$1 WHERE id=$2', [cost, req.user_id]);\n          await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [cost, req.user_id, 'AI image generation refund']);\n        });\n      } catch (refundError) { console.error('Image generation refund failed:', refundError); }\n    }\n    console.error('IMAGE_GENERATE_ERROR', { message: error?.message, status: error?.status, code: error?.code });\n    if (error?.status === 402) return res.status(402).json({ error: 'Yeterli kredi yok. Görsel oluşturma 5 kredi kullanır.' });\n    return res.status(502).json({ error: 'Görsel oluşturma başarısız. API anahtarını ve sağlayıcı bakiyesini kontrol edin.' });\n  }\n});\n";
+  const routeAnchor = 'app.use(csrfProtection);';
+  if (server.includes(routeAnchor)) server = server.replace(routeAnchor, routeAnchor + imageGenerateRoute);
+}
+
+
 let dashboard = fs.readFileSync(dashboardFile, 'utf8');
 const enhancementScript = String.raw`
 <script>
@@ -103,7 +110,7 @@ const enhancementScript = String.raw`
     document.head.appendChild(style);
     const tools = document.createElement('div');
     tools.className = 'star-image-tools';
-    tools.innerHTML = '<button type="button" class="star-image-tool active" data-mode="edit">✦ Görseli düzenle</button><button type="button" class="star-image-tool" data-mode="analyze">◉ Görsel analizi</button>';
+    tools.innerHTML = '<button type="button" class="star-image-tool active" data-mode="edit">✦ Görseli düzenle</button><button type="button" class="star-image-tool" data-mode="generate">✧ Görsel oluştur</button><button type="button" class="star-image-tool" data-mode="analyze">◉ Görsel analizi</button>';
     info.appendChild(tools);
     tools.querySelectorAll('[data-mode]').forEach(function (button) { button.addEventListener('click', function () { imageMode = button.dataset.mode; tools.querySelectorAll('[data-mode]').forEach(function (b) { b.classList.toggle('active', b === button); }); }); });
     const composerWrap = form.parentElement;
@@ -116,6 +123,23 @@ const enhancementScript = String.raw`
     function readFile(file) { return new Promise(function (resolve, reject) { const reader = new FileReader(); reader.onload = function () { resolve(String(reader.result || '')); }; reader.onerror = reject; reader.readAsDataURL(file); }); }
     function addResult(imageUrl, prompt) { const box = document.createElement('div'); box.className = 'msg ai'; const label = document.createElement('div'); label.className = 'star-result-label'; label.textContent = '✦ Görsel düzenlendi'; const image = document.createElement('img'); image.className = 'message-image'; image.src = imageUrl; image.alt = prompt || 'Düzenlenmiş görsel'; box.appendChild(label); box.appendChild(image); messages.appendChild(box); const scroller = document.getElementById('messages'); if (scroller) scroller.scrollTop = scroller.scrollHeight; }
     function showError(text) { const box = document.createElement('div'); box.className = 'msg ai star-error'; box.textContent = text; messages.appendChild(box); const scroller = document.getElementById('messages'); if (scroller) scroller.scrollTop = scroller.scrollHeight; }
+    form.addEventListener('submit', async function (event) {
+      if (imageMode !== 'generate') return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (sendButton) sendButton.disabled = true;
+      const prompt = String(input.value || '').trim();
+      if (!prompt) { showError('Önce oluşturmak istediğiniz görseli tarif edin.'); if (sendButton) sendButton.disabled = false; input.focus(); return; }
+      try {
+        const response = await fetch('/api/image-generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ prompt }) });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(data.error || ('Görsel oluşturma başarısız oldu (' + response.status + ')'));
+        if (!data.image) throw new Error('Görsel oluşturma sunucusundan sonuç alınamadı.');
+        addResult(data.image, prompt);
+        if (data.credits !== undefined) setCredits(data.credits);
+        input.value = ''; if (preview) preview.classList.remove('open');
+      } catch (error) { showError(String(error && error.message ? error.message : 'Görsel oluşturma hizmetine bağlanılamadı.')); }
+      finally { if (sendButton) sendButton.disabled = false; }
+    }, true);
     form.addEventListener('submit', async function (event) {
       if (imageMode !== 'edit' || !fileInput.files || !fileInput.files[0]) return;
       event.preventDefault();
