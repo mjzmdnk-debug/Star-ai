@@ -40,7 +40,7 @@ if (isProduction && JWT_SECRET.length < 32) {
 const SIGNING_SECRET = JWT_SECRET || 'local-development-secret';
 
 const PLANS = {
-  free: { name: 'Ücretsiz', price: 0, credits: 100 },
+  free: { name: 'Ücretsiz', price: 0, credits: 50 },
   basic: { name: 'Basic', price: 199, credits: 5000 },
   pro: { name: 'Pro', price: 399, credits: 15000 },
   business: { name: 'Business', price: 799, credits: 30000 }
@@ -156,7 +156,7 @@ async function initializeDatabase() {
   await db.none(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
-      plan TEXT NOT NULL DEFAULT 'free', credits INTEGER NOT NULL DEFAULT 100 CHECK (credits >= 0),
+      plan TEXT NOT NULL DEFAULT 'free', credits INTEGER NOT NULL DEFAULT 50 CHECK (credits >= 0),
       role TEXT NOT NULL DEFAULT 'user', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS credit_ledger (
