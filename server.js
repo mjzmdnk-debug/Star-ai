@@ -495,7 +495,11 @@ app.post('/api/chat', auth, rateLimit({ windowMs: 60000, max: 30, scope: 'chat',
     await db.tx(async t => {
       if (convId) {
         const conversation = await t.oneOrNone('SELECT id FROM conversations WHERE id=$1 AND user_id=$2 FOR UPDATE', [convId, req.user_id]);
-        if (!conversation) throw Object.assign(new Error('CONVERSATION_NOT_FOUND'), { status: 404 });
+        // A stale or deleted conversation ID should not block chat; start a fresh conversation safely.
+        if (!conversation) {
+          const created = await t.one('INSERT INTO conversations(user_id,title) VALUES($1,$2) RETURNING id', [req.user_id, message.slice(0, 80)]);
+          convId = created.id;
+        }
       } else {
         const created = await t.one('INSERT INTO conversations(user_id,title) VALUES($1,$2) RETURNING id', [req.user_id, message.slice(0, 80)]);
         convId = created.id;
