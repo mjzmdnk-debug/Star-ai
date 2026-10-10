@@ -20,7 +20,9 @@ if (!server.includes("app.post('/api/image-edit'")) {
 
 app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => 'user:' + req.user_id }), async (req, res) => {
   if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });
-  if (!imageClient) return res.status(503).json({ error: 'Görsel servisi henüz bağlanmadı. Railway ortamına POLLINATIONS_API_KEY eklenmesi gerekiyor.' });
+  const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  const apiToken = String(process.env.CLOUDFLARE_API_TOKEN || '').trim();
+  if (!accountId || !apiToken) return res.status(503).json({ error: 'Cloudflare görsel düzenleme ayarları eksik.' });
   const prompt = String(req.body?.prompt || '').trim().slice(0, 12000);
   const imageData = String(req.body?.image_data || '').trim();
   const separator = imageData.indexOf(',');
@@ -39,18 +41,18 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']);
       reserved = true;
     });
-    const mime = header.slice(5, header.indexOf(';')) || 'image/png';
-    const imageFile = await toFile(Buffer.from(payload, 'base64'), 'upload.' + (mime.split('/')[1] || 'png'), { type: mime });
-    const response = await imageClient.images.edit({
-      model: 'openai/gpt-image-2',
-      image: imageFile,
-      prompt: 'Edit this image according to the following instruction: ' + prompt + '. Preserve identity, face, composition, camera perspective, lighting, background, clothing, and every detail that was not explicitly requested to change. Make only the requested changes and keep the result photorealistic and natural.',
-      size: 'auto',
-      quality: 'medium',
-      response_format: 'b64_json'
+    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/black-forest-labs/flux-1-kontext-dev', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Edit this image according to the instruction. Preserve identity, composition, lighting and all unrequested details. Make only the requested changes and keep the result natural. Instruction: ' + prompt,
+        image: payload
+      })
     });
-    const b64 = response?.data?.[0]?.b64_json;
-    if (!b64) throw new Error('EMPTY_IMAGE_RESULT');
+    const providerData = await cfResponse.json().catch(() => ({}));
+    if (!cfResponse.ok || providerData?.success === false) throw Object.assign(new Error('CLOUDFLARE_IMAGE_EDIT_ERROR'), { status: cfResponse.status });
+    const b64 = providerData?.result?.image || providerData?.image;
+    if (!b64 || typeof b64 !== 'string') throw new Error('EMPTY_IMAGE_RESULT');
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
     return res.json({ ok: true, image: 'data:image/png;base64,' + b64, credits: credits.credits, cost: IMAGE_EDIT_COST });
@@ -67,7 +69,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
     if (error?.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor. Bir görsel düzenleme 5 kredi kullanır.' });
     const message = String(error?.message || '').toLowerCase();
     if (message.includes('safety') || message.includes('content') || message.includes('policy')) return res.status(400).json({ error: 'Bu görsel veya düzenleme isteği güvenlik kuralları nedeniyle işlenemedi.' });
-    if (message.includes('quota') || message.includes('billing') || message.includes('credit') || message.includes('401') || message.includes('403')) return res.status(503).json({ error: 'Pollinations görsel servisi anahtarı veya kullanım bakiyesi kontrol edilmeli.' });
+    if (message.includes('quota') || message.includes('billing') || message.includes('credit') || message.includes('401') || message.includes('403')) return res.status(503).json({ error: 'Cloudflare görsel servisi yetkisi veya kullanım sınırı kontrol edilmeli.' });
     return res.status(502).json({ error: 'Görsel düzenleme servisi yanıt vermedi. Lütfen tekrar deneyin.' });
   }
 });
