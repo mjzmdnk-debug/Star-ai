@@ -73,8 +73,8 @@ app.get('/api/auth/mobile/me', mobileAuth, async (req, res) => {
 });
 `;
   server = server.replace("function auth(req, res, next) {", authPatch + "\nfunction auth(req, res, next) {");
-  const originalAuth = `    const token = req.cookies?.star_token;\n    if (!token) return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.' });`;
-  const patchedAuth = `    const token = req.cookies?.star_token || mobileBearer(req);\n    if (!token) return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.' });`;
+  const originalAuth = `    const token = req.cookies?.star_token || mobileBearer(req);\n    if (!token) return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.' });\n    const payload = jwt.verify(token, SIGNING_SECRET);\n    if (!Number.isInteger(Number(payload.id))) return res.status(401).json({ error: 'Oturum geçersiz.' });`;
+  const patchedAuth = `    const cookieToken = req.cookies?.star_token;\n    const bearerToken = mobileBearer(req);\n    const token = cookieToken || bearerToken;\n    if (!token) return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.' });\n    const payload = jwt.verify(token, SIGNING_SECRET);\n    if (bearerToken && payload.typ !== 'access') return res.status(401).json({ error: 'Access token gerekli.' });\n    if (!Number.isInteger(Number(payload.id))) return res.status(401).json({ error: 'Oturum geçersiz.' });`;
   if (server.includes(originalAuth)) server = server.replace(originalAuth, patchedAuth);
   fs.writeFileSync(serverFile, server);
 }
