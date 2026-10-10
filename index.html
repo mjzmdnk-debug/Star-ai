@@ -78,9 +78,12 @@ a:focus-visible,button:focus-visible{outline:2px solid #ff3b59;outline-offset:3p
 </style>
 <style data-trai-android-image="v1">
 .hero-robot{overflow:visible}
-.hero-robot .hero-android-image{display:block;width:100%;max-width:620px;height:auto;max-height:500px;object-fit:contain;object-position:center;filter:drop-shadow(0 28px 48px rgba(0,0,0,.48));-webkit-mask-image:radial-gradient(ellipse 72% 76% at 50% 48%,#000 58%,rgba(0,0,0,.88) 76%,transparent 100%);mask-image:radial-gradient(ellipse 72% 76% at 50% 48%,#000 58%,rgba(0,0,0,.88) 76%,transparent 100%)}
-@media(max-width:900px){.hero-robot .hero-android-image{max-height:370px}}
-@media(max-width:650px){.hero-robot .hero-android-image{max-height:330px;max-width:460px}}
+.hero-robot{min-height:460px;margin:-38px -7% -24px -3%;overflow:visible}
+.hero-robot:before{inset:4% -10%;background:radial-gradient(ellipse at 48% 48%,rgba(0,116,255,.34),transparent 57%),radial-gradient(ellipse at 72% 44%,rgba(255,34,83,.2),transparent 44%);filter:blur(32px);opacity:.95}
+.hero-robot:after{inset:-3% -8%;background:linear-gradient(90deg,var(--bg) 0%,rgba(8,13,22,.62) 8%,transparent 38%,transparent 78%,var(--bg) 100%),linear-gradient(0deg,var(--bg) 0%,transparent 24%,transparent 80%,var(--bg) 100%);pointer-events:none}
+.hero-robot .hero-android-image{display:block;width:120%;max-width:760px;height:clamp(410px,42vw,570px);object-fit:cover;object-position:53% 43%;mix-blend-mode:screen;opacity:.93;filter:contrast(1.08) saturate(1.12) brightness(.9) drop-shadow(0 28px 55px rgba(0,0,0,.42));-webkit-mask-image:radial-gradient(ellipse 68% 72% at 53% 48%,#000 43%,rgba(0,0,0,.92) 58%,rgba(0,0,0,.54) 73%,transparent 100%);mask-image:radial-gradient(ellipse 68% 72% at 53% 48%,#000 43%,rgba(0,0,0,.92) 58%,rgba(0,0,0,.54) 73%,transparent 100%)}
+@media(max-width:900px){.hero-robot{min-height:340px;margin:-15px -5% -15px}.hero-robot .hero-android-image{width:112%;height:390px;max-height:390px}}
+@media(max-width:650px){.hero-robot{min-height:270px;width:100%;margin:-5px -2% -8px}.hero-robot .hero-android-image{width:108%;height:300px;max-height:300px;object-position:52% 42%}}
 </style>
 
 </head>
