@@ -4,6 +4,8 @@ const serverFile = new URL('./server.js', import.meta.url);
 const dashboardFile = new URL('./dashboard.html', import.meta.url);
 
 let server = fs.readFileSync(serverFile, 'utf8');
+server = server.replace("import OpenAI from 'openai';", "import OpenAI from 'openai';\nimport { toFile } from 'openai/uploads';");
+server = server.replace("const app = express();", "const app = express();\nconst POLLINATIONS_API_KEY = String(process.env.POLLINATIONS_API_KEY || '').trim();\nconst imageClient = POLLINATIONS_API_KEY ? new OpenAI({ apiKey: POLLINATIONS_API_KEY, baseURL: 'https://gen.pollinations.ai/v1' }) : null;");
 server = server.replace(
   "app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));",
   "app.use(express.json({ limit: '8mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));"
@@ -18,7 +20,7 @@ if (!server.includes("app.post('/api/image-edit'")) {
 
 app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'image-edit', getKey: req => 'user:' + req.user_id }), async (req, res) => {
   if (!sameOrigin(req)) return res.status(403).json({ error: 'Origin not allowed.' });
-  if (!openai) return res.status(503).json({ error: 'AI image service is not configured.' });
+  if (!imageClient) return res.status(503).json({ error: 'Görsel servisi henüz bağlanmadı. Railway ortamına POLLINATIONS_API_KEY eklenmesi gerekiyor.' });
   const prompt = String(req.body?.prompt || '').trim().slice(0, 12000);
   const imageData = String(req.body?.image_data || '').trim();
   const separator = imageData.indexOf(',');
@@ -37,17 +39,17 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -IMAGE_EDIT_COST, 'AI image edit']);
       reserved = true;
     });
-    const response = await openai.responses.create({
-      model: 'gpt-5.6-luna',
-      input: [{ role: 'user', content: [
-        { type: 'input_text', text: 'Edit this image according to the following instruction: ' + prompt + '. Preserve identity, face, composition, camera perspective, lighting, background, clothing, and every detail that was not explicitly requested to change. Make only the requested changes and keep the result photorealistic and natural.' },
-        { type: 'input_image', image_url: imageData }
-      ]}],
-      tools: [{ type: 'image_generation', model: 'gpt-image-2', action: 'edit', quality: 'medium' }],
-      tool_choice: { type: 'image_generation' }
+    const mime = header.slice(5, header.indexOf(';')) || 'image/png';
+    const imageFile = await toFile(Buffer.from(payload, 'base64'), 'upload.' + (mime.split('/')[1] || 'png'), { type: mime });
+    const response = await imageClient.images.edit({
+      model: 'openai/gpt-image-2',
+      image: imageFile,
+      prompt: 'Edit this image according to the following instruction: ' + prompt + '. Preserve identity, face, composition, camera perspective, lighting, background, clothing, and every detail that was not explicitly requested to change. Make only the requested changes and keep the result photorealistic and natural.',
+      size: 'auto',
+      quality: 'medium',
+      response_format: 'b64_json'
     });
-    const imageCall = Array.isArray(response?.output) ? response.output.find(item => item?.type === 'image_generation_call' && item?.result) : null;
-    const b64 = imageCall?.result;
+    const b64 = response?.data?.[0]?.b64_json;
     if (!b64) throw new Error('EMPTY_IMAGE_RESULT');
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
@@ -65,7 +67,7 @@ app.post('/api/image-edit', auth, rateLimit({ windowMs: 60000, max: 6, scope: 'i
     if (error?.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor. Bir görsel düzenleme 5 kredi kullanır.' });
     const message = String(error?.message || '').toLowerCase();
     if (message.includes('safety') || message.includes('content') || message.includes('policy')) return res.status(400).json({ error: 'Bu görsel veya düzenleme isteği güvenlik kuralları nedeniyle işlenemedi.' });
-    if (message.includes('quota') || message.includes('billing') || message.includes('credit')) return res.status(503).json({ error: 'OpenAI görsel servisi için bakiye/kullanım limiti yetersiz.' });
+    if (message.includes('quota') || message.includes('billing') || message.includes('credit') || message.includes('401') || message.includes('403')) return res.status(503).json({ error: 'Pollinations görsel servisi anahtarı veya kullanım bakiyesi kontrol edilmeli.' });
     return res.status(502).json({ error: 'Görsel düzenleme servisi yanıt vermedi. Lütfen tekrar deneyin.' });
   }
 });
