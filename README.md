@@ -47,8 +47,10 @@ npm start
 - `PORT`
 - `DATABASE_URL`
 - `JWT_SECRET` — في الإنتاج يجب أن يكون 32 حرفًا على الأقل
-- `OPENAI_API_KEY`
-- `AI_MODEL` — الافتراضي `gpt-4o-mini`
+- `GROQ_API_KEY` — اختياري. عند ضبطه، يستخدم `/api/chat` واجهة Groq المتوافقة مع OpenAI، وله الأولوية على مفتاح OpenAI. احفظه في متغيرات بيئة الخدمة في Railway فقط، ولا تضفه إلى GitHub أو الواجهة الأمامية.
+- `GROQ_MODEL` — اختياري؛ الافتراضي `openai/gpt-oss-20b`.
+- `OPENAI_API_KEY` — مفتاح بديل؛ يستخدمه التطبيق فقط إذا لم يُضبط `GROQ_API_KEY`.
+- `AI_MODEL` — نموذج OpenAI الافتراضي عند استخدام المفتاح البديل؛ الافتراضي `gpt-4o-mini`.
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `TRUST_PROXY` — اختياري. إذا لم تضبطه، يستخدم التطبيق `0` محليًا و`1` تلقائيًا عند اكتشاف Render. اضبطه صراحة إذا كانت بنية الـProxy مختلفة.
