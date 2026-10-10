@@ -27,15 +27,20 @@ app.post('/api/image-analyze', auth, rateLimit({ windowMs: 60000, max: 10, scope
       await t.none('INSERT INTO credit_ledger(user_id,amount,reason) VALUES($1,$2,$3)', [req.user_id, -ANALYZE_COST, 'AI image analysis']);
       reserved = true;
     });
-    const response = await openai.responses.create({
-      model: 'gpt-5.6-luna',
-      input: [{ role: 'user', content: [
-        { type: 'input_text', text: question || 'حلل هذه الصورة بدقة. صف العناصر المهمة، النصوص الظاهرة، المشهد، الألوان، التفاصيل البصرية، وأي ملاحظات مفيدة. لا تدّعِ معرفة هوية الأشخاص في الصورة.' },
-        { type: 'input_image', image_url: imageData }
-      ]}],
-      max_output_tokens: 1200
+    const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+    const apiToken = String(process.env.CLOUDFLARE_API_TOKEN || '').trim();
+    if (!accountId || !apiToken) throw Object.assign(new Error('CLOUDFLARE_NOT_CONFIGURED'), { status: 503 });
+    const cfResponse = await fetch('https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(accountId) + '/ai/run/@cf/meta/llama-3.2-11b-vision-instruct', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: question || 'حلل هذه الصورة بدقة. صف العناصر المهمة والنصوص والمشهد والألوان والتفاصيل البصرية. لا تدّعِ معرفة هوية الأشخاص.',
+        image: payload
+      })
     });
-    const answer = String(response?.output_text || '').trim();
+    const providerData = await cfResponse.json().catch(() => ({}));
+    if (!cfResponse.ok || providerData?.success === false) throw Object.assign(new Error('CLOUDFLARE_IMAGE_ANALYSIS_ERROR'), { status: cfResponse.status });
+    const answer = String(providerData?.result?.response || providerData?.result?.description || '').trim();
     if (!answer) throw new Error('EMPTY_IMAGE_ANALYSIS');
     const credits = await db.one('SELECT credits FROM users WHERE id=$1', [req.user_id]);
     reserved = false;
@@ -51,6 +56,7 @@ app.post('/api/image-analyze', auth, rateLimit({ windowMs: 60000, max: 10, scope
     }
     console.error('IMAGE_ANALYZE_ERROR', { name: error?.name, message: error?.message, status: error?.status, code: error?.code, type: error?.type });
     if (error?.status === 402) return res.status(402).json({ error: 'Yeterli Credits bulunmuyor. Görsel analizi 2 kredi kullanır.' });
+    if (error?.status === 503 && error?.message === 'CLOUDFLARE_NOT_CONFIGURED') return res.status(503).json({ error: 'Cloudflare görsel analizi ayarları eksik.' });
     const message = String(error?.message || '').toLowerCase();
     if (message.includes('safety') || message.includes('content') || message.includes('policy')) return res.status(400).json({ error: 'Bu görsel güvenlik kuralları nedeniyle analiz edilemedi.' });
     if (message.includes('quota') || message.includes('billing') || message.includes('credit')) return res.status(503).json({ error: 'OpenAI görsel servisi için bakiye/kullanım limiti yetersiz.' });
