@@ -335,7 +335,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     if (!username || !key) return res.status(503).send('OSB credentials are not configured.');
     const encoded = typeof req.body?.res === 'string' ? req.body.res : '';
     const receivedHash = typeof req.body?.hash === 'string' ? req.body.hash.trim() : '';
-    if (!encoded || !receivedHash) return res.status(400).send('missing parameter');
+    if (!encoded || !receivedHash) { console.warn('Shopier OSB rejected: missing parameter', { hasRes: Boolean(encoded), hasHash: Boolean(receivedHash), contentType: String(req.get('content-type') || '') }); return res.status(400).send('missing parameter'); }
 
     const expectedHash = crypto.createHmac('sha256', key).update(encoded + username).digest('hex');
     if (!safeEqual(expectedHash.toLowerCase(), receivedHash.toLowerCase())) {
@@ -347,7 +347,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
       const decoded = Buffer.from(encoded, 'base64').toString('utf8');
       order = JSON.parse(decoded);
     } catch {
-      return res.status(400).send('invalid res payload');
+      console.warn('Shopier OSB rejected: invalid res payload'); return res.status(400).send('invalid res payload');
     }
 
     const isTest = String(order?.istest ?? '0') === '1';
@@ -360,18 +360,18 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     const productId = String(order?.productid ?? '').trim();
     const currencyCode = String(order?.currency ?? '').trim();
     const amount = Number(String(order?.price ?? '').replace(',', '.'));
-    if (!orderId || !buyerEmail || !productId) return res.status(400).send('missing order fields');
+    if (!orderId || !buyerEmail || !productId) { console.warn('Shopier OSB rejected: missing order fields', { hasOrderId: Boolean(orderId), hasEmail: Boolean(buyerEmail), hasProductId: Boolean(productId) }); return res.status(400).send('missing order fields'); }
     // Shopier OSB: currency 0 is TRY; reject all other currencies.
-    if (currencyCode !== '0') return res.status(400).send('unsupported currency');
-    if (!Number.isFinite(amount)) return res.status(400).send('invalid amount');
+    if (currencyCode !== '0') { console.warn('Shopier OSB rejected: unsupported currency', { currencyCode }); return res.status(400).send('unsupported currency'); }
+    if (!Number.isFinite(amount)) { console.warn('Shopier OSB rejected: invalid amount'); return res.status(400).send('invalid amount'); }
 
     let plan = null;
     for (const [candidate, product] of Object.entries(SHOPIER_PRODUCTS)) {
       if (String(product.id) === productId) { plan = candidate; break; }
     }
-    if (!plan) return res.status(400).send('product not recognized');
+    if (!plan) { console.warn('Shopier OSB rejected: product not recognized', { productId }); return res.status(400).send('product not recognized'); }
     const product = SHOPIER_PRODUCTS[plan];
-    if (Math.abs(amount - product.price) > 0.01) return res.status(400).send('payment amount mismatch');
+    if (Math.abs(amount - product.price) > 0.01) { console.warn('Shopier OSB rejected: payment amount mismatch', { plan, expectedPrice: product.price, receivedPrice: amount }); return res.status(400).send('payment amount mismatch'); }
 
     const eventRef = `shopier-osb-${orderId}`;
     await db.tx(async t => {
