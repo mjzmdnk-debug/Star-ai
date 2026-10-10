@@ -19,8 +19,20 @@ const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
-const AI_MODEL = String(process.env.AI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const GROQ_API_KEY = String(process.env.GROQ_API_KEY || '').trim();
+const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
+const AI_PROVIDER = String(process.env.AI_PROVIDER || (GROQ_API_KEY ? 'groq' : 'openai')).trim().toLowerCase();
+const AI_MODEL = String(
+  process.env.AI_MODEL ||
+  (AI_PROVIDER === 'groq' ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') : 'gpt-4o-mini')
+).trim();
+const aiApiKey = AI_PROVIDER === 'groq' ? GROQ_API_KEY : OPENAI_API_KEY;
+const openai = aiApiKey
+  ? new OpenAI({
+      apiKey: aiApiKey,
+      ...(AI_PROVIDER === 'groq' ? { baseURL: 'https://api.groq.com/openai/v1' } : {})
+    })
+  : null;
 
 if (isProduction && JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must be set to a strong value (at least 32 characters) in production.');
@@ -44,7 +56,7 @@ const SHOPIER_PRODUCTS = {
   ...(businessId ? { business: { id: businessId, name: 'TR AI Business', price: 799, credits: 30000, url: `https://shopier.com/${businessId}` } } : {})
 };
 
-const allowedModels = new Set([AI_MODEL, 'gpt-4o-mini']);
+const allowedModels = new Set([AI_MODEL]);
 const SYSTEM_PROMPT = 'Sen TR AI platformunun Türkçe yapay zekâ asistanısın. Net, faydalı ve profesyonel cevaplar ver.';
 
 function parseTrustProxy(value) {
