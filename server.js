@@ -280,6 +280,7 @@ function isPaidStatus(status) {
 }
 
 app.disable('x-powered-by');
+app.use(express.urlencoded({ extended: false, limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 app.use(cookieParser());
 app.use((req, res, next) => {
@@ -324,66 +325,77 @@ app.post('/api/billing/checkout', auth, rateLimit({ windowMs: 60000, max: 20, sc
 
 app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'webhook' }), async (req, res) => {
   try {
-    const secret = String(process.env.SHOPIER_WEBHOOK_SECRET || process.env.SHOPIER_WEBHOOK_TOKEN || '').trim();
-    if (!secret) return res.status(503).json({ error: 'Webhook token is not configured.' });
-    const received = String(req.get('Shopier-Signature') || '').trim();
-    const rawBody = Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(JSON.stringify(req.body || {}));
-    const expectedHex = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-    const expectedBase64 = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
-    if (!received || (!safeEqual(received, expectedHex) && !safeEqual(received, expectedBase64))) {
-      return res.status(401).json({ error: 'Invalid webhook signature.' });
+    // Shopier OSB posts form fields: res (base64 JSON) and hash (HMAC-SHA256).
+    const username = String(process.env.SHOPIER_OSB_USERNAME || '').trim();
+    const key = String(process.env.SHOPIER_OSB_KEY || '').trim();
+    if (!username || !key) return res.status(503).send('OSB credentials are not configured.');
+    const encoded = typeof req.body?.res === 'string' ? req.body.res : '';
+    const receivedHash = typeof req.body?.hash === 'string' ? req.body.hash.trim() : '';
+    if (!encoded || !receivedHash) return res.status(400).send('missing parameter');
+
+    const expectedHash = crypto.createHmac('sha256', key).update(encoded + username).digest('hex');
+    if (!safeEqual(expectedHash.toLowerCase(), receivedHash.toLowerCase())) {
+      return res.status(401).send('invalid hash');
     }
 
-    const body = req.body || {};
-    const event = String(body.event || body.type || body.event_type || '').trim().toLowerCase();
-    if (event && !['order.created', 'order.paid', 'payment.succeeded', 'payment.created', 'payment.completed'].includes(event)) {
-      return res.status(200).json({ ok: true, ignored: true });
+    let order;
+    try {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      order = JSON.parse(decoded);
+    } catch {
+      return res.status(400).send('invalid res payload');
     }
-    const order = extractOrder(body);
-    if (!order.orderId) return res.status(400).json({ error: 'Order ID missing.' });
-    if (!isPaidStatus(order.status)) return res.status(200).json({ ok: true, paymentStatus: order.status || 'unknown' });
-    if (!order.buyerEmail) return res.status(400).json({ error: 'Buyer email missing.' });
-    if (order.currency !== 'TRY') return res.status(400).json({ error: 'Unsupported payment currency.' });
+
+    const orderId = String(order?.orderid ?? '').trim();
+    const buyerEmail = String(order?.email ?? '').trim().toLowerCase();
+    const productId = String(order?.productid ?? '').trim();
+    const currencyCode = String(order?.currency ?? '').trim();
+    const amount = Number(String(order?.price ?? '').replace(',', '.'));
+    const isTest = String(order?.istest ?? '0') === '1';
+    if (!orderId || !buyerEmail || !productId) return res.status(400).send('missing order fields');
+    // Shopier OSB: currency 0 is TRY; reject all other currencies.
+    if (currencyCode !== '0') return res.status(400).send('unsupported currency');
+    if (!Number.isFinite(amount)) return res.status(400).send('invalid amount');
+
+    // Test notifications validate connectivity only and must never grant credits.
+    if (isTest) return res.status(200).send('success');
 
     let plan = null;
     for (const [candidate, product] of Object.entries(SHOPIER_PRODUCTS)) {
-      if (product.id === order.productId) { plan = candidate; break; }
+      if (String(product.id) === productId) { plan = candidate; break; }
     }
-    if (!plan) return res.status(400).json({ error: 'Product not recognized.' });
+    if (!plan) return res.status(400).send('product not recognized');
     const product = SHOPIER_PRODUCTS[plan];
-    if (order.amount === null || Math.abs(order.amount - product.price) > 0.01) {
-      console.warn('Shopier payment amount mismatch:', { orderId: order.orderId, plan, receivedAmount: order.amount });
-      return res.status(400).json({ error: 'Payment amount does not match the selected plan.' });
-    }
-    const eventRef = `shopier-order-${order.orderId}`;
+    if (Math.abs(amount - product.price) > 0.01) return res.status(400).send('payment amount mismatch');
 
+    const eventRef = `shopier-osb-${orderId}`;
     await db.tx(async t => {
       const inserted = await t.result(
         'INSERT INTO webhook_events(event_ref,event_type,payload) VALUES($1,$2,$3) ON CONFLICT(event_ref) DO NOTHING',
-        [eventRef, event || 'shopier.payment', JSON.stringify(body)]
+        [eventRef, 'shopier.osb', JSON.stringify({ orderid: orderId, email: buyerEmail, productid: productId, currency: currencyCode, price: amount })]
       );
       if (inserted.rowCount !== 1) return;
 
-      const user = await t.oneOrNone('SELECT id FROM users WHERE email=$1 FOR UPDATE', [order.buyerEmail]);
-      if (!user) throw new Error('TR AI user not found.');
-
+      const user = await t.oneOrNone('SELECT id FROM users WHERE email=$1 FOR UPDATE', [buyerEmail]);
+      if (!user) throw new Error('TR AI user not found for Shopier OSB order.');
       await t.none('UPDATE users SET credits=credits+$1, plan=$2 WHERE id=$3', [product.credits, plan, user.id]);
       await t.none(
         'INSERT INTO credit_ledger(user_id,amount,reason,order_id,currency,amount_value) VALUES($1,$2,$3,$4,$5,$6)',
-        [user.id, product.credits, `Shopier ${product.name} - Order ${order.orderId}`, order.orderId, order.currency, order.amount ?? product.price]
+        [user.id, product.credits, `Shopier ${product.name} - Order ${orderId}`, orderId, 'TRY', amount]
       );
       await t.none(
         'INSERT INTO payment_transactions(order_id,user_id,plan,amount,currency,status) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(order_id) DO NOTHING',
-        [order.orderId, user.id, plan, order.amount ?? product.price, order.currency, 'paid']
+        [orderId, user.id, plan, amount, 'TRY', 'paid']
       );
       await t.none(
         'INSERT INTO subscriptions(user_id,plan,status,iyzico_subscription_ref,iyzico_customer_ref) VALUES($1,$2,$3,$4,$5)',
-        [user.id, plan, 'active', order.orderId, 'shopier']);
+        [user.id, plan, 'active', orderId, 'shopier']
+      );
     });
-    res.status(200).json({ ok: true, plan, credits: product.credits });
+    return res.status(200).send('success');
   } catch (e) {
-    console.error('Shopier webhook error:', e);
-    res.status(500).json({ error: 'Webhook processing failed.' });
+    console.error('Shopier OSB webhook error:', e);
+    return res.status(500).send('notification processing failed');
   }
 });
 
