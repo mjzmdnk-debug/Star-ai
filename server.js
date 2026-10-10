@@ -323,6 +323,10 @@ app.post('/api/billing/checkout', auth, rateLimit({ windowMs: 60000, max: 20, sc
   res.json({ ok: true, plan, name: product.name, price: product.price, credits: product.credits, paymentPageUrl: product.url });
 });
 
+// Shopier may probe the configured notification URL with GET. This is only a connectivity check;
+// payment processing remains POST-only and always requires a valid OSB signature.
+app.get('/api/shopier/webhook', (req, res) => res.status(200).type('text/plain').send('success'));
+
 app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'webhook' }), async (req, res) => {
   try {
     // Shopier OSB posts form fields: res (base64 JSON) and hash (HMAC-SHA256).
@@ -346,19 +350,20 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
       return res.status(400).send('invalid res payload');
     }
 
+    const isTest = String(order?.istest ?? '0') === '1';
+    // A signed OSB test notification only validates connectivity/signature. It must not require
+    // purchase fields and must never grant credits or touch account balances.
+    if (isTest) return res.status(200).type('text/plain').send('success');
+
     const orderId = String(order?.orderid ?? '').trim();
     const buyerEmail = String(order?.email ?? '').trim().toLowerCase();
     const productId = String(order?.productid ?? '').trim();
     const currencyCode = String(order?.currency ?? '').trim();
     const amount = Number(String(order?.price ?? '').replace(',', '.'));
-    const isTest = String(order?.istest ?? '0') === '1';
     if (!orderId || !buyerEmail || !productId) return res.status(400).send('missing order fields');
     // Shopier OSB: currency 0 is TRY; reject all other currencies.
     if (currencyCode !== '0') return res.status(400).send('unsupported currency');
     if (!Number.isFinite(amount)) return res.status(400).send('invalid amount');
-
-    // Test notifications validate connectivity only and must never grant credits.
-    if (isTest) return res.status(200).send('success');
 
     let plan = null;
     for (const [candidate, product] of Object.entries(SHOPIER_PRODUCTS)) {
