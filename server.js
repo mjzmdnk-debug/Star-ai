@@ -335,7 +335,7 @@ app.post('/api/shopier/webhook', rateLimit({ windowMs: 60000, max: 60, scope: 'w
     if (!username || !key) return res.status(503).send('OSB credentials are not configured.');
     const encoded = typeof req.body?.res === 'string' ? req.body.res : '';
     const receivedHash = typeof req.body?.hash === 'string' ? req.body.hash.trim() : '';
-    if (!encoded || !receivedHash) { console.warn('Shopier OSB rejected: missing parameter', { hasRes: Boolean(encoded), hasHash: Boolean(receivedHash), contentType: String(req.get('content-type') || '') }); return res.status(400).send('missing parameter'); }
+    if (!encoded || !receivedHash) { console.warn('Shopier OSB rejected: missing parameter ' + JSON.stringify({ bodyKeys: Object.keys(req.body || {}), hasRes: Boolean(encoded), hasHash: Boolean(receivedHash), contentType: String(req.get('content-type') || '') })); return res.status(400).send('missing parameter'); }
 
     const expectedHash = crypto.createHmac('sha256', key).update(encoded + username).digest('hex');
     if (!safeEqual(expectedHash.toLowerCase(), receivedHash.toLowerCase())) {
