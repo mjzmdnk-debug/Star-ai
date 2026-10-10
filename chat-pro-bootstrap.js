@@ -16,7 +16,18 @@ if (!server.includes('STAR_AI_MULTIMODAL_CHAT_V1')) {
   );
 
   const oldCreate = `    const completion = await openai.chat.completions.create({\n      model,\n      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: message }],\n      temperature,\n      max_tokens: maxTokens\n    });`;
-  const newCreate = `    const multimodalMessage = imageData\n      ? { role: 'user', content: [\n          { type: 'text', text: message + '\\n\\nحلّل الصورة المرفقة بدقة واستند إليها في إجابتك. إذا كان المطلوب اقتراح تعديل أو إضافة، اشرح ما يمكن تنفيذه بوضوح ولا تدّعِ أنك عدّلت الصورة ما لم تُستخدم خدمة التعديل.' },\n          { type: 'image_url', image_url: { url: imageData } }\n        ] }\n      : { role: 'user', content: message };\n    const completion = await openai.chat.completions.create({\n      model,\n      messages: [{ role: 'system', content: SYSTEM_PROMPT + ' يمكنك تحليل الصور المرفقة والإجابة عن الأسئلة المتعلقة بها. كن عملياً، دقيقاً، واكتب خطوات واضحة عند طلب التعديل أو الإضافة.' }, ...history, multimodalMessage],\n      temperature,\n      max_tokens: maxTokens\n    });`;
+  const newCreate = `    const multimodalMessage = imageData\n      ? { role: 'user', content: [\n          { type: 'text', text: message + '\\n\\nحلّل الصورة المرفقة بدقة واستند إليها في إجابتك. إذا كان المطلوب اقتراح تعديل أو إضافة، اشرح ما يمكن تنفيذه بوضوح ولا تدّعِ أنك عدّلت الصورة ما لم تُستخدم خدمة التعديل.' },\n          { type: 'image_url', image_url: { url: imageData } }\n        ] }\n      : { role: 'user', content: message };\n    const completion = await openai.chat.completions.create({\n      model,\n      messages: [
+        { role: 'system', content: SYSTEM_PROMPT + ' يمكنك تحليل الصور المرفقة والإجابة عن الأسئلة المتعلقة بها. كن عملياً، دقيقاً، واكتب خطوات واضحة عند طلب التعديل أو الإضافة.' },
+        ...history.map(item => ({
+          role: item.role === 'assistant' ? 'assistant' : 'user',
+          content: typeof item.content === 'string'
+            ? item.content
+            : Array.isArray(item.content)
+              ? item.content.map(part => typeof part === 'string' ? part : (part?.text || part?.content || '[محتوى متعدد الوسائط سابق]')).join('\\n')
+              : String(item.content ?? '')
+        })),
+        multimodalMessage
+      ],\n      temperature,\n      max_tokens: maxTokens\n    });`;
   if (server.includes(oldCreate)) server = server.replace(oldCreate, newCreate);
 
   server = server.replace(
