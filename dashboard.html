@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#080d16">
+<meta name="theme-color" content="#050b18">
 <title>TR AI — Panel</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
@@ -66,6 +66,28 @@ body.dashboard-page{height:100vh;height:100dvh;overflow:hidden;background:radial
 @media(prefers-reduced-motion:reduce){.dashboard-page *, .dashboard-page *::before,.dashboard-page *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 </style>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style data-trai-brand="blue-red-v1">
+:root{--tr-blue:#168bff;--tr-blue2:#24baff;--tr-red:#ff2e50;--tr-bg:#050b18;--tr-panel:#09162a}
+.dashboard-page{font-family:"Manrope",sans-serif;background:radial-gradient(ellipse at 80% 0%,rgba(0,100,255,.19),transparent 38%),radial-gradient(ellipse at 10% 100%,rgba(255,30,66,.12),transparent 35%),#050b18;color:#f3f8ff}
+.dashboard-page h1,.dashboard-page h2,.dashboard-page h3,.dashboard-page .dash-nav,.dashboard-page .sidebar-label,.dashboard-page button{font-family:"Space Grotesk","Manrope",sans-serif;letter-spacing:-.025em}
+.dashboard-page .dash-nav{background:rgba(4,10,23,.91);border-bottom-color:rgba(43,142,255,.22)}
+.dashboard-shell{background:transparent}
+.chat-sidebar,.conversation-sidebar{background:rgba(5,13,29,.92)!important;border-color:rgba(50,139,255,.22)!important}
+.new-chat{background:linear-gradient(115deg,#087cff,#19b8ff)!important;border-color:rgba(64,174,255,.5)!important;box-shadow:0 12px 32px rgba(0,123,255,.22)!important}
+.new-chat:hover{box-shadow:0 14px 36px rgba(255,35,70,.2)!important}
+.dashboard-page button,.dashboard-page input,.dashboard-page textarea,.dashboard-page select{accent-color:#168bff}
+.dashboard-page button:focus-visible,.dashboard-page a:focus-visible{outline:2px solid #ff3655;outline-offset:2px}
+.dashboard-page .active,.dashboard-page .selected,.dashboard-page [aria-current=page]{border-color:rgba(22,139,255,.52)!important;background-color:rgba(22,139,255,.13)!important}
+.dashboard-page .chat-main,.dashboard-page .chat-content{background:radial-gradient(ellipse at 85% 5%,rgba(0,113,255,.08),transparent 38%),transparent}
+.dashboard-page .message.user,.dashboard-page .user-message{border-color:rgba(255,46,80,.28)!important}
+.dashboard-page .send-button,.dashboard-page #send,.dashboard-page button[type=submit]{background:linear-gradient(115deg,#087cff,#19b8ff)!important;border-color:rgba(48,165,255,.6)!important}
+.dashboard-page .chat-input,.dashboard-page textarea{border-color:rgba(55,147,255,.28)!important}
+.dashboard-page .chat-input:focus-within{border-color:rgba(255,46,80,.55)!important}
+.dashboard-page:after{content:"";position:fixed;inset:64px 0 0;z-index:-1;pointer-events:none;opacity:.26;background:radial-gradient(70% 20% at -8% 36%,transparent 45%,rgba(0,119,255,.52) 47%,transparent 50%),radial-gradient(65% 18% at 105% 70%,transparent 44%,rgba(255,28,65,.45) 47%,transparent 50%);filter:blur(14px)}
+</style>
 </head>
 <body class="dashboard-page">
 <header class="dash-nav"><div style="display:flex;align-items:center"><button id="mobileMenu" class="mobile-menu" type="button" aria-label="Menü">☰</button><a class="brand" href="/">✦ TR <b>AI</b></a></div><div class="dash-user"><span id="user">Yükleniyor…</span><span class="credits-pill">✦ <b id="credits">—</b></span><button id="logout" class="logout" type="button">Çıkış</button></div></header>
