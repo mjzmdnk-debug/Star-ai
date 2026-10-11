@@ -38,7 +38,7 @@ body.dashboard-page .composer-wrap{padding-bottom:max(10px,env(safe-area-inset-b
   body.dashboard-page .brand{font-size:16px}
   body.dashboard-page .chat-main-head{padding-left:10px;padding-right:10px}
   body.dashboard-page #messages{padding-left:10px;padding-right:10px}
-  body.dashboard-page .dashboard-page .msg{max-width:94%}
+  body.dashboard-page .msg{max-width:94%}
 }
 </style>`;
 const styleStart = dashboard.indexOf('<style data-tr-ai-mobile-scroll-fix="v');
