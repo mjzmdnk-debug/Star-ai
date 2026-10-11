@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://star-ai-kmfd.onrender.com';
+export const API_BASE_URL = 'https://tr-ai.up.railway.app';
 
 type ApiOptions = RequestInit & { accessToken?: string };
 
