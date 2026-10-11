@@ -80,7 +80,7 @@ export default function Chat() {
     try {
       const result = await authenticatedFetch<ChatResponse>('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({ message, conversation_id: conversationId || undefined, language }),
+        body: JSON.stringify({ message, conversationId: conversationId || undefined, language }),
       });
       setConversationId(result.conversation_id);
       setUser((current) => current ? { ...current, credits: result.credits } : current);
